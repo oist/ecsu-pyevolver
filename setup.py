@@ -17,7 +17,7 @@ setuptools.setup(
     url="https://gitlab.com/oist-ecsu/pyevolver",  # where the package will be hosted
     # a list of all Python import packages that should be included in the distribution package
     # in this case it'll only be example_pkg
-    packages=setuptools.find_packages(exclude=['contrib', 'docs', 'tests']),
+    packages=setuptools.find_packages(exclude=['contrib', 'docs']),
     install_requires=reqs,
     classifiers=[
         "Programming Language :: Python :: 3.7",  # compatible only with Python 3.7
