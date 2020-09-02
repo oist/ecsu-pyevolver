@@ -11,6 +11,7 @@ pyevolver/visualize.py
 pyevolver.egg-info/PKG-INFO
 pyevolver.egg-info/SOURCES.txt
 pyevolver.egg-info/dependency_links.txt
+pyevolver.egg-info/requires.txt
 pyevolver.egg-info/top_level.txt
 pyevolver/tests/__init__.py
 pyevolver/tests/ctrnn_test.py
