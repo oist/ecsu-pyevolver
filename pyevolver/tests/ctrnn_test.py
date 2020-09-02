@@ -1,5 +1,5 @@
 import numpy as np
-from ctrnn import BrainCTRNN
+from pyevolver.ctrnn import BrainCTRNN
 import matplotlib.pyplot as plt
 
 

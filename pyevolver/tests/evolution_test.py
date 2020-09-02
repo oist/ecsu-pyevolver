@@ -1,8 +1,8 @@
 """
 TODO: Missing module docstring
 """
-from evolution import Evolution, MIN_SEARCH_VALUE, MAX_SEARCH_VALUE
-import utils
+from pyevolver.evolution import Evolution, MIN_SEARCH_VALUE, MAX_SEARCH_VALUE
+from pyevolver import utils
 import numpy as np
 from pytictoc import TicToc
 from numpy.random import RandomState

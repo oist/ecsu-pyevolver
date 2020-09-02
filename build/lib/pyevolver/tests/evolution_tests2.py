@@ -2,9 +2,9 @@
 TODO: Missing module docstring
 """
 
-import evolution
-from evolution import Evolution
-import utils
+import pyevolver.evolution
+from pyevolver.evolution import Evolution
+from pyevolver import utils
 import numpy as np
 from numpy.random import RandomState
 

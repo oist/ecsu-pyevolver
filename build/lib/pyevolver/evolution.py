@@ -5,9 +5,9 @@ from copy import deepcopy
 from typing import List, Callable
 from dataclasses import dataclass, field, asdict
 import numpy as np
-from tests.timing import Timing
-import utils
-import json_numpy
+from pyevolver import utils
+from pyevolver import json_numpy
+from pyevolver.tests.timing import Timing
 from numpy.random import RandomState
 
 np.seterr(over='ignore')
