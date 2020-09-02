@@ -409,8 +409,8 @@ class Evolution:
         self.population = np.array([self.mutate(gen) for gen in parent_population])
         self.timing.add_time('EVO2-HC_3_mutate', t)
 
-        # 4) Calculate new performances        
-        self.performance = np.array(self.evaluation_function(self.population), self.pop_eval_random_seed)
+        # 4) Calculate new performances
+        self.performance = np.array(self.evaluation_function(self.population, self.pop_eval_random_seed))
         self.timing.add_time('EVO2-HC_4_compute_perf', t)
 
         # 5) Check if performace worsened and in this case retrieve agent from parent population

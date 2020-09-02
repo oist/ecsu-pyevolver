@@ -1,10 +1,14 @@
+astroid==2.4.2
 cycler==0.10.0
 descartes==1.1.0
 gitdb==4.0.5
 GitPython==3.1.7
+isort==5.4.2
 joblib==0.16.0
 kiwisolver==1.2.0
+lazy-object-proxy==1.4.3
 matplotlib==3.3.0
+mccabe==0.6.1
 mizani==0.7.1
 numpy==1.19.0
 packaging==20.4
@@ -13,6 +17,7 @@ pandas==1.0.5
 patsy==0.5.1
 Pillow==7.2.0
 plotnine==0.7.0
+pylint==2.6.0
 pyparsing==2.4.7
 python-dateutil==2.8.1
 pytictoc==1.5.1
@@ -22,4 +27,6 @@ semver==2.10.2
 six==1.15.0
 smmap==3.0.4
 statsmodels==0.11.1
+toml==0.10.1
 version-query==1.1.0
+wrapt==1.12.1

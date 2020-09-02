@@ -35,7 +35,7 @@ def run_single():
     return result
 
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     result_s = run_single()
     result_p = run_parallel()
     assert result_s == result_p

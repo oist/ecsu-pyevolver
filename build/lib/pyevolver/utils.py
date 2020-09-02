@@ -4,7 +4,7 @@ import os
 
 
 def is_int(s):
-    return re.match(r'^\d+$', s)
+    return re.match(r'^\d+$', s) is not None
 
 
 def linmap(vin, rin, rout):
@@ -76,3 +76,7 @@ def make_dir_if_not_exists(dir_path):
         assert os.path.isdir(dir_path), 'Path {} is not a directory'.format(dir_path)
         return
     os.makedirs(dir_path)
+
+
+if __name__ == "__main__":
+    print(is_int('3'))

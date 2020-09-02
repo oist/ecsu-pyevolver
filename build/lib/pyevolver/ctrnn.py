@@ -41,7 +41,7 @@ class BrainCTRNN:
     """
 
     random_seed: int = 0
-    num_neurons: int = 1    
+    num_neurons: int = 1
     step_size: float = 0.01
     tau_range: Tuple = (1, 1)
     gain_range: Tuple = (1, 1)
@@ -65,15 +65,15 @@ class BrainCTRNN:
             self.input = np.zeros(self.num_neurons)  # initialized with zeros
         if self.states is None:
             self.states = self.rand_param(self.state_range)  # random
-        if self.taus is None:    
+        if self.taus is None:
             self.taus = self.rand_param(self.tau_range)  # random
-        if self.gains is None:    
+        if self.gains is None:
             self.gains = self.rand_param(self.gain_range)  # random
-        if self.biases is None:    
+        if self.biases is None:
             self.biases = self.rand_param(self.bias_range)  # random
-        if self.weights is None:    
+        if self.weights is None:
             self.weights = self.random_state.uniform(
-                self.weight_range[0], self.weight_range[1], 
+                self.weight_range[0], self.weight_range[1],
                 (self.num_neurons, self.num_neurons)
             )  # random
         if self.weights.ndim == 1:
