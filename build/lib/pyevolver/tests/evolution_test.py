@@ -9,6 +9,11 @@ from pytictoc import TicToc
 from numpy.random import RandomState
 import os
 
+
+#################################
+# START OF ASSERTION FUNCTIONS
+#################################
+
 def test_linear_scaling():
 
     performances = np.array([1, 50, 15, 21, 100, 23, 88, 45, 44, 76])
@@ -193,8 +198,22 @@ def test_mutate():
 
     print('SUCCESS!')
 
-def rws_test():
 
+def assertion_tests():
+    test_linear_scaling()
+    test_fitness_FPS()
+    test_fitness_RANK()
+    test_crossover()
+    test_select_mating_pool_RWS()
+    test_select_mating_pool_SUS()
+    test_mutate()
+
+#################################
+# END OF ASSERTION FUNCTIONS
+#################################
+
+
+def rws_test():
     size = 10000
     selection = 1000
     random_state = RandomState()
@@ -228,39 +247,6 @@ def rws_test():
     print('numpy: {}'.format(elp_np))
     print(result_numpy_method)
     print(result_standard_method)
-
-
-def evaluate(population_genotype, _):
-    range_input = (MIN_SEARCH_VALUE, MAX_SEARCH_VALUE)
-    range_output = (-10, 10)
-    performances = []
-    for gen in population_genotype:
-        gen = utils.linmap(gen, range_input, range_output)
-        perf = 200 - (gen[0]**2 + gen[1]**2)
-        performances.append(perf)
-    return performances
-
-
-def test_evolution():
-    evo = Evolution(
-        random_seed=123,
-        population_size=1000,
-        genotype_size=2,
-        evaluation_function=evaluate,
-        fitness_normalization_mode='RANK',
-        selection_mode='RWS',
-        reproduction_mode='HILL_CLIMBING',  #'GENETIC_ALGORITHM'
-        mutation_variance=0.1,
-        elitist_fraction=0.1,
-        mating_fraction=0.9,
-        crossover_probability=0.5,
-        crossover_mode='1-POINT',
-        max_generation=100,
-        folder_path='./tmp',
-        termination_function=None,
-        checkpoint_interval=5
-    )
-    evo.run()
 
 
 def time_evolution():
@@ -325,19 +311,11 @@ def test_continuation():
     )
     evo2.run()
 
-def assert_tests():
-    test_linear_scaling()
-    test_fitness_FPS()
-    test_fitness_RANK()
-    test_crossover()
-    test_select_mating_pool_RWS()
-    test_select_mating_pool_SUS()
-    test_mutate()
-
 
 if __name__ == "__main__":
-    assert_tests()
-    # test_evolution()
-    # test_continuation()
-    # time_evolution()
+    assertion_tests()
     # rws_test()
+    # time_evolution()
+    # test_continuation()
+    
+    
