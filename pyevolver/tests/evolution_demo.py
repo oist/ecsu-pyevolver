@@ -27,8 +27,8 @@ def evolution_demo(folder_path):
         genotype_size=2,
         evaluation_function=evaluate,
         fitness_normalization_mode='RANK',
-        selection_mode='RWS',
-        reproduction_mode='HILL_CLIMBING',  #'GENETIC_ALGORITHM'
+        selection_mode='RWS', # SUS
+        reproduction_mode='GENETIC_ALGORITHM',  #'HILL_CLIMBING' 'GENETIC_ALGORITHM'
         mutation_variance=0.1,
         elitist_fraction=0.1,
         mating_fraction=0.9,
