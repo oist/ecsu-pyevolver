@@ -17,7 +17,7 @@ setuptools.setup(
     url="https://gitlab.com/oist-ecsu/pyevolver",  # where the package will be hosted
     # a list of all Python import packages that should be included in the distribution package
     # in this case it'll only be example_pkg
-    #packages=setuptools.find_packages(exclude=['contrib', 'docs']),
+    # packages=setuptools.find_packages(exclude=['contrib', 'docs']),
     packages=['pyevolver', 'pyevolver.tests'],
     install_requires=reqs,
     classifiers=[
@@ -26,3 +26,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
 )
+
+# RUN: python setup.py sdist bdist_wheel
