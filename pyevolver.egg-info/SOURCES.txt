@@ -6,6 +6,7 @@ pyevolver/__init__.py
 pyevolver/ctrnn.py
 pyevolver/evolution.py
 pyevolver/json_numpy.py
+pyevolver/timing.py
 pyevolver/utils.py
 pyevolver/visualize.py
 pyevolver.egg-info/PKG-INFO
@@ -17,6 +18,4 @@ pyevolver/tests/__init__.py
 pyevolver/tests/ctrnn_test.py
 pyevolver/tests/evolution_demo.py
 pyevolver/tests/evolution_test.py
-pyevolver/tests/evolution_tests2.py
 pyevolver/tests/parallel_test.py
-pyevolver/tests/timing.py

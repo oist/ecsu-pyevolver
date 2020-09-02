@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, asdict
 import numpy as np
 from pyevolver import utils
 from pyevolver import json_numpy
-from pyevolver.tests.timing import Timing
+from pyevolver.timing import Timing
 from numpy.random import RandomState
 
 np.seterr(over='ignore')
@@ -111,14 +111,16 @@ class Evolution:
         if self.random_state is None:
             self.random_state = RandomState(self.random_seed)
 
-            # create initial population if not already loaded from existing one
+        self.loaded_from_file = all(
+            x is not None for x in 
+            [self.population, self.performances, self.fitnesses]
+        )
+
+        # create initial population if not provided
         if self.population is None:
-            self.loaded_from_file = False
             # create a set of random genotypes
             self.population = self.random_state.uniform(MIN_SEARCH_VALUE, MAX_SEARCH_VALUE,
                                                         [self.population_size, self.genotype_size])
-        else:
-            self.loaded_from_file = True  # used to initialize run (see run function)
 
         if self.search_constraint is None:
             self.search_constraint = np.array([True] * self.genotype_size)

@@ -8,7 +8,9 @@ Author-email: federico.sangati2@oist.jp, ekaterina.sangati@oist.jp
 License: UNKNOWN
 Description: # pyevolver
         
+        Install with 
         
+        `pip install git+https://gitlab.com/oist-ecsu/pyevolver`
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3.7
 Classifier: License :: OSI Approved :: MIT License
