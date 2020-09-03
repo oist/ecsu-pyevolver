@@ -1,4 +1,4 @@
-from scipy.special import expit
+from scipy.special import expit # pylint: disable-msg=E0611
 from dataclasses import dataclass
 from typing import Tuple
 import numpy as np
