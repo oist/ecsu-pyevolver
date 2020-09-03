@@ -294,7 +294,7 @@ class Evolution:
 
             # print short statistics
             print("Generation {}: Best: {:.5f}, Worst: {:.5f}, Average: {:.5f}, Variance: {:.5f}".format(
-                str(self.generation).rjust(self.file_num_zfill), best, avg, worst, variance))
+                str(self.generation).rjust(self.file_num_zfill), best, worst, avg, variance))
             self.timing.add_time('EVO1-RUN_print_stats', t)
 
             # check if to terminate
