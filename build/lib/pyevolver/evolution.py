@@ -177,6 +177,8 @@ class Evolution:
         accepted_values = ['NONE', 'FPS', 'RANK', 'SIGMA']
         assert self.fitness_normalization_mode in accepted_values, \
             'fitness_normalization_mode should be either {}'.format(', '.join(accepted_values))
+        assert self.fitness_normalization_mode != 'NONE' or self.selection_mode == 'UNIFORM', \
+            "if fitness_normalization_mode is NONE selection_mode must be UNIFORM"
 
         # selection_mode
         accepted_values = ['UNIFORM', 'RWS', 'SUS']
@@ -475,8 +477,6 @@ class Evolution:
         Select a mating pool population.
         :return: selected parents for reproduction
         """
-        cum_probs = np.cumsum(self.fitnesses)
-        assert 0 <= abs(cum_probs[-1] - 1.0) < 1E-13
 
         mating_pool = []
 
@@ -488,25 +488,28 @@ class Evolution:
             # create mating_pool from elite group
             cycle_elite = cycle(source_populatiotion)
             mating_pool = deepcopy([next(cycle_elite) for _ in range(self.n_mating)])
-        elif self.selection_mode == "RWS":
-            # roulette wheel selection
-            mating_pool_indexes = self.random_state.choice(
-                self.population_size, size=self.n_mating, replace=True, p=self.fitnesses)
-            mating_pool = [source_populatiotion[i] for i in mating_pool_indexes]
-        elif self.selection_mode == "SUS":
-            # TODO: find a way to implement this via numpy
-            # stochastic universal sampling selection
-            p_dist = 1 / self.n_mating  # distance between the pointers
-            start = self.random_state.uniform(0, p_dist)
-            pointers = [start + i * p_dist for i in range(self.n_mating)]
-
-            for p in pointers:
-                for (i, genotype) in enumerate(source_populatiotion):
-                    if p <= cum_probs[i]:
-                        mating_pool.append(genotype)
-                        break
         else:
-            assert False
+            cum_probs = np.cumsum(self.fitnesses)
+            assert 0 <= abs(cum_probs[-1] - 1.0) < 1E-13
+            if self.selection_mode == "RWS":
+                # roulette wheel selection
+                mating_pool_indexes = self.random_state.choice(
+                    self.population_size, size=self.n_mating, replace=True, p=self.fitnesses)
+                mating_pool = [source_populatiotion[i] for i in mating_pool_indexes]
+            elif self.selection_mode == "SUS":
+                # TODO: find a way to implement this via numpy
+                # stochastic universal sampling selection
+                p_dist = 1 / self.n_mating  # distance between the pointers
+                start = self.random_state.uniform(0, p_dist)
+                pointers = [start + i * p_dist for i in range(self.n_mating)]
+
+                for p in pointers:
+                    for (i, genotype) in enumerate(source_populatiotion):
+                        if p <= cum_probs[i]:
+                            mating_pool.append(genotype)
+                            break
+            else:
+                assert False
 
         mating_pool = deepcopy(mating_pool)
         assert len(mating_pool) == self.n_mating
