@@ -4,6 +4,7 @@ import json
 from copy import deepcopy
 from typing import List, Callable
 from dataclasses import dataclass, field, asdict
+from itertools import cycle
 import numpy as np
 from pyevolver import utils
 from pyevolver import json_numpy
@@ -36,6 +37,8 @@ class Evolution:
     :param fitness_normalization_mode: (str) method to normalize fitness values
         (fitness-proportionate, rank-based or sigma scaling)
     :param selection_mode: (str) method to select parents for reproduction (RWS or SUS)
+    :param reproduce_from_elite: (bool) whether the reproduction comes from elite 
+        or remaining agents in the population
     :param reproduction_mode: (str) method to reproduce genetic algorithm or hill climbing
     :param mutation_variance: (float) variance of gaussian mutation rate
     :param folder_path: (string) path of the folder where to save the checkpoints
@@ -66,9 +69,10 @@ class Evolution:
     population_size: int
     genotype_size: int
     evaluation_function: Callable
-    fitness_normalization_mode: str = 'FPS'
-    selection_mode: str = 'RWS'
-    reproduction_mode: str = 'HILL_CLIMBING'
+    fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
+    selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
+    reproduce_from_elite: bool = False
+    reproduction_mode: str = 'HILL_CLIMBING' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
     mutation_variance: float = DEFAULT_MUTATION_VARIANCE
     max_generation: int = 100
     termination_function: Callable = None
@@ -148,7 +152,7 @@ class Evolution:
                 np.floor(self.population_size * self.elitist_fraction + 0.5)
             )  # children from elite group
             self.n_mating = int(np.floor(
-                self.population_size * self.mating_fraction + 0.5
+                self.population_size * self.mating_fraction + 0.5 # at least one
             ))  # children from mating population
             self.n_fillup = self.population_size - (self.n_elite + self.n_mating)  # children from random fillup
             assert self.n_elite + self.n_mating + self.n_fillup == self.population_size
@@ -170,12 +174,12 @@ class Evolution:
             "The length of search_constraint should be equal to genotype_size"
 
         # fitness_normalization_mode
-        accepted_values = ['FPS', 'RANK', 'SIGMA']
+        accepted_values = ['NONE', 'FPS', 'RANK', 'SIGMA']
         assert self.fitness_normalization_mode in accepted_values, \
             'fitness_normalization_mode should be either {}'.format(', '.join(accepted_values))
 
         # selection_mode
-        accepted_values = ['RWS', 'SUS']
+        accepted_values = ['UNIFORM', 'RWS', 'SUS']
         assert self.selection_mode in accepted_values, \
             'selection_mode should be either {}'.format(', '.join(accepted_values))
 
@@ -195,49 +199,49 @@ class Evolution:
             assert re.match('UNIFORM|\d+-POINT', self.crossover_mode), \
                 'In GENETIC_ALGORITHM: crossover_mode should be UNIFORM or x-POINT'
 
-            # crossover
-        if self.crossover_mode:
-            if self.crossover_mode == 'UNIFORM':
-                # crossover is computed on the entire genotype
-                # with prob 0.5 of flipping each genotype site
-                assert self.crossover_points is None, \
-                    "In uniform crossover_mode you shouldn't specify the crossover_points"
-            elif self.crossover_mode.endswith('-POINT'):
-                # A. if crossover_points is None the points are randomly generated
-                # crossover_points must be a list of max x-1 integers in the interval [1,G-1]
-                # where x is the integer > 0 specified in the parameter crossover_mode ('x-POINT')
-                # and G is the size of the genotype
-                # e.g. if parent1=[0,0,0] and parent2=[1,1,1] (G=3),
-                # crossover_points must contain a single integer which can be
-                # 1: child1=[0,1,1] child2=[1,0,0]
-                # 2: child1=[0,0,1] child2=[1,1,0]
-                # B. if crossover_points is not None -> num_points <= len(self.crossover_points)
-                # if num_points < len(self.crossover_points)
-                # only num_points will be randomly selected from the self.crossover_points
-                num_points = self.crossover_mode[:-6]
-                assert utils.is_int(num_points), \
-                    "Param crossover_mode should be 'UNIFORM' or 'x-POINT' (with x being an integer > 0)"
-                num_points = int(num_points)
-                assert 0 < num_points < self.genotype_size, \
-                    "Param crossover_mode should be 'x-POINT', with x being an integer such that 0 < x < G " \
-                    "and where G is the size of the genotype"
-                assert num_points <= self.genotype_size - 1, \
-                    "Too high value for {} in param crossover_mode. Max should be G-1 " \
-                    "(where G is the size of the genotype)".format(
-                        self.crossover_mode)
-                if self.crossover_points is not None:
-                    assert len(set(self.crossover_points)) == len(self.crossover_points), \
-                        "Duplicated values in crossover_points"
-                    self.crossover_points = sorted(set(self.crossover_points))
-                    assert num_points <= len(self.crossover_points), \
-                        "crossover_mode={} and crossover_points={} but {} must be <= {}=len(crossover_points)".format(
-                            self.crossover_mode, self.crossover_points, num_points, len(self.crossover_points))
-                    assert all(1 < x < self.genotype_size for x in self.crossover_points), \
-                        "Some of the values in crossover_points are not in the interval [1,G-1] " \
-                        "where G is the size of the genotype"
-            else:
-                assert False, \
-                    "Param crossover_mode should be 'UNIFORM' or 'x-POINT' (with x being an integer > 0)"
+        # crossover
+        assert self.crossover_mode != None, "crossover_mode cannot be None"        
+        if self.crossover_mode == 'UNIFORM':
+            # crossover is computed on the entire genotype
+            # with prob 0.5 of flipping each genotype site
+            assert self.crossover_points is None, \
+                "In uniform crossover_mode you shouldn't specify the crossover_points"
+        elif self.crossover_mode.endswith('-POINT'):
+            # A. if crossover_points is None the points are randomly generated
+            # crossover_points must be a list of max x-1 integers in the interval [1,G-1]
+            # where x is the integer > 0 specified in the parameter crossover_mode ('x-POINT')
+            # and G is the size of the genotype
+            # e.g. if parent1=[0,0,0] and parent2=[1,1,1] (G=3),
+            # crossover_points must contain a single integer which can be
+            # 1: child1=[0,1,1] child2=[1,0,0]
+            # 2: child1=[0,0,1] child2=[1,1,0]
+            # B. if crossover_points is not None -> num_points <= len(self.crossover_points)
+            # if num_points < len(self.crossover_points)
+            # only num_points will be randomly selected from the self.crossover_points
+            num_points = self.crossover_mode[:-6]
+            assert utils.is_int(num_points), \
+                "Param crossover_mode should be 'UNIFORM' or 'x-POINT' (with x being an integer > 0)"
+            num_points = int(num_points)
+            assert 0 < num_points < self.genotype_size, \
+                "Param crossover_mode should be 'x-POINT', with x being an integer such that 0 < x < G " \
+                "and where G is the size of the genotype"
+            assert num_points <= self.genotype_size - 1, \
+                "Too high value for {} in param crossover_mode. Max should be G-1 " \
+                "(where G is the size of the genotype)".format(
+                    self.crossover_mode)
+            if self.crossover_points is not None:
+                assert len(set(self.crossover_points)) == len(self.crossover_points), \
+                    "Duplicated values in crossover_points"
+                self.crossover_points = sorted(set(self.crossover_points))
+                assert num_points <= len(self.crossover_points), \
+                    "crossover_mode={} and crossover_points={} but {} must be <= {}=len(crossover_points)".format(
+                        self.crossover_mode, self.crossover_points, num_points, len(self.crossover_points))
+                assert all(1 < x < self.genotype_size for x in self.crossover_points), \
+                    "Some of the values in crossover_points are not in the interval [1,G-1] " \
+                    "where G is the size of the genotype"
+        else:
+            assert False, \
+                "Param crossover_mode should be 'UNIFORM' or 'x-POINT' (with x being an integer > 0)"
 
     def set_folder_name(self, text):
         self.folder_path = text
@@ -345,10 +349,11 @@ class Evolution:
         new_population = [None] * self.population_size
 
         # 1) Elitist selection
-        new_population[:self.n_elite] = deepcopy(self.population[:self.n_elite])
+        self.elite_population = self.population[:self.n_elite]
+        new_population[:self.n_elite] = deepcopy(self.elite_population)
         self.timing.add_time('EVO2-GA_1_elitist_selection', t)
 
-        # 2) Select mating population from the remaining population
+        # 2) Select mating population from the remaining population        
         mating_pool = self.select_mating_pool()
         self.timing.add_time('EVO2-GA_2_mating_pool', t)
 
@@ -360,7 +365,7 @@ class Evolution:
         mating_finish = self.n_elite + self.n_mating
         newpop_counter = self.n_elite  # track where we are in the new population
         mating_counter = 0
-
+        
         while newpop_counter < mating_finish:
             not_last = mating_finish - newpop_counter > 1
             parent1 = mating_pool[mating_counter]
@@ -427,7 +432,10 @@ class Evolution:
         """
         Update genotype fitness to relative values, retain sorting from best to worst.
         """
-        if self.fitness_normalization_mode == 'FPS':  # (fitness-proportionate)
+        if self.fitness_normalization_mode == 'NONE':
+            # use performances as fitnesses
+            self.fitnesses = np.copy(self.performances)
+        elif self.fitness_normalization_mode == 'FPS':  # (fitness-proportionate)
             avg_perf = self.avg_performances[-1]
             m = utils.linear_scaling(
                 self.worst_performances[-1],
@@ -472,12 +480,19 @@ class Evolution:
 
         mating_pool = []
 
-        if self.selection_mode == "RWS":
+        source_populatiotion = \
+            self.elite_population if self.reproduce_from_elite \
+            else self.population
+
+        if self.selection_mode == 'UNIFORM':
+            # create mating_pool from elite group
+            cycle_elite = cycle(source_populatiotion)
+            mating_pool = deepcopy([next(cycle_elite) for _ in range(self.n_mating)])
+        elif self.selection_mode == "RWS":
             # roulette wheel selection
             mating_pool_indexes = self.random_state.choice(
                 self.population_size, size=self.n_mating, replace=True, p=self.fitnesses)
-            mating_pool = [self.population[i] for i in mating_pool_indexes]
-
+            mating_pool = [source_populatiotion[i] for i in mating_pool_indexes]
         elif self.selection_mode == "SUS":
             # TODO: find a way to implement this via numpy
             # stochastic universal sampling selection
@@ -486,11 +501,14 @@ class Evolution:
             pointers = [start + i * p_dist for i in range(self.n_mating)]
 
             for p in pointers:
-                for (i, genotype) in enumerate(self.population):
+                for (i, genotype) in enumerate(source_populatiotion):
                     if p <= cum_probs[i]:
                         mating_pool.append(genotype)
                         break
+        else:
+            assert False
 
+        mating_pool = deepcopy(mating_pool)
         assert len(mating_pool) == self.n_mating
         return mating_pool
 

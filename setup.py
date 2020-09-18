@@ -8,7 +8,7 @@ with open('requirements.txt') as f:
 
 setuptools.setup(
     name="pyevolver",  # distribution name of the package; unique on pypi.org
-    version="0.0.1",
+    version="0.0.2",
     author="Federico Sangati, Katja Sangati",
     author_email="federico.sangati2@oist.jp, ekaterina.sangati@oist.jp",
     description="Package for evolving neural networks with Python.",
@@ -21,7 +21,7 @@ setuptools.setup(
     packages=['pyevolver', 'pyevolver.tests'],
     install_requires=reqs,
     classifiers=[
-        "Programming Language :: Python :: 3.7",  # compatible only with Python 3.7
+        "Programming Language :: Python :: 3.7.3",  # compatible only with Python 3.7.3
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
