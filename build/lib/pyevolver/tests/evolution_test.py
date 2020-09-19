@@ -312,23 +312,28 @@ def test_continuation():
     evo2.run()
 
 def test_v002():
+
+    folder_path = './data/tmp1'
+    utils.make_dir_if_not_exists(folder_path)
+
     evo = Evolution(
         random_seed=123,
-        population_size=5000,
-        genotype_size=100,
-        evaluation_function=lambda pop, seeds: [1]*len(pop),
+        population_size=4,
+        genotype_size=2,
+        evaluation_function=lambda pop, seeds: np.sum(pop, axis=1), #np.arange(1,0,-1/len(pop)),
         fitness_normalization_mode='NONE',
         selection_mode='UNIFORM', # UNIFORM, SUS, RWS
         reproduce_from_elite=True,
         reproduction_mode='GENETIC_ALGORITHM',  # 'GENETIC_ALGORITHM' 'HILL_CLIMBING'
         mutation_variance=0.1,
-        elitist_fraction=0.1,
-        mating_fraction=0.9,
+        elitist_fraction=0.5,
+        mating_fraction=0.5,
         crossover_probability=0.5,
-        crossover_mode='1-POINT',
+        crossover_mode='UNIFORM',
         max_generation=100,
         termination_function=None,
         checkpoint_interval=1,
+        folder_path=folder_path,
         timeit=True
     )
     evo.run()
