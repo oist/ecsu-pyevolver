@@ -270,6 +270,8 @@ class Evolution:
             self.pop_eval_random_seed = self.random_state.randint(0, 2 ** 32, self.population_size)
 
             self.performances = self.evaluation_function(self.population, self.pop_eval_random_seed)                        
+            if type(self.performances) != np.ndarray:
+                self.performances = np.array(self.performances)
 
             assert len(self.performances) == self.population_size
 
