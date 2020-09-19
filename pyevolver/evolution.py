@@ -123,8 +123,10 @@ class Evolution:
         # create initial population if not provided
         if self.population is None:
             # create a set of random genotypes
-            self.population = self.random_state.uniform(MIN_SEARCH_VALUE, MAX_SEARCH_VALUE,
-                                                        [self.population_size, self.genotype_size])
+            self.population = self.random_state.uniform(
+                MIN_SEARCH_VALUE, MAX_SEARCH_VALUE,
+                [self.population_size, self.genotype_size]
+            )
 
         if self.search_constraint is None:
             self.search_constraint = np.array([True] * self.genotype_size)
@@ -248,8 +250,6 @@ class Evolution:
     def set_folder_name(self, text):
         self.folder_path = text
 
-    def get_pop_eval_random_seeds(self):
-        return self.random_state.randint(0, 2 ** 32, self.population_size)
 
     def run(self):
         """
@@ -267,23 +267,28 @@ class Evolution:
 
         while self.generation <= self.max_generation:
             # evaluate all genotypes on the task
-            self.pop_eval_random_seed = self.get_pop_eval_random_seeds()
+            self.pop_eval_random_seed = self.random_state.randint(0, 2 ** 32, self.population_size)
 
-            # if self.generation in [50,52]:
-            #     print("\nRand seeds at gen {}:\n{}\n".format(self.generation, self.pop_eval_random_seed))
+            self.performances = self.evaluation_function(self.population, self.pop_eval_random_seed)                        
 
-            self.performances = self.evaluation_function(self.population, self.pop_eval_random_seed)
             assert len(self.performances) == self.population_size
+
             self.timing.add_time('EVO1-RUN_eval_function', t)
 
             # sort genotypes and performances by performance from best to worst
-            # TODO: check if there is a way to do it natively with numpy
-            self.population, self.performances, self.pop_eval_random_seed = \
-                zip(*sorted(zip(self.population, self.performances, self.pop_eval_random_seed),
-                            key=lambda pair: pair[1], reverse=True))
+            perf_sort_indexes = np.argsort(-self.performances)            
+            self.performances = np.take_along_axis(self.performances, perf_sort_indexes, axis=None)
+            perf_sort_indexes = perf_sort_indexes.reshape(self.population_size, 1)
+            self.population = np.take_along_axis(self.population, perf_sort_indexes, axis=0)
 
-            self.population = np.array(self.population)
-            self.performances = np.array(self.performances)
+            # EQUIVALNET METHOD WITHOUT NP:
+            # sort genotypes and performances by performance from best to worst
+            # self.population, self.performances = \
+            #     zip(*sorted(zip(self.population, self.performances), 
+            #     key=lambda pair: pair[1], reverse=True))
+            # self.population = np.array(self.population)
+            # self.performances = np.array(self.performances)
+
             self.timing.add_time('EVO1-RUN_sort', t)
 
             # update average/best/worst population performance
@@ -480,14 +485,17 @@ class Evolution:
 
         mating_pool = []
 
-        source_populatiotion = \
+        source_population = \
             self.elite_population if self.reproduce_from_elite \
             else self.population
 
+        assert len(source_population>0), "Error, can't create a mating pool from empty source population"
+
         if self.selection_mode == 'UNIFORM':
-            # create mating_pool from elite group
-            cycle_elite = cycle(source_populatiotion)
-            mating_pool = deepcopy([next(cycle_elite) for _ in range(self.n_mating)])
+            # create mating_pool from source_population uniformally 
+            # (from beginning to end and if needed restart from beginning)
+            cycle_source_population = cycle(source_population)
+            mating_pool = [next(cycle_source_population) for _ in range(self.n_mating)]
         else:
             cum_probs = np.cumsum(self.fitnesses)
             assert 0 <= abs(cum_probs[-1] - 1.0) < 1E-13
@@ -495,7 +503,7 @@ class Evolution:
                 # roulette wheel selection
                 mating_pool_indexes = self.random_state.choice(
                     self.population_size, size=self.n_mating, replace=True, p=self.fitnesses)
-                mating_pool = [source_populatiotion[i] for i in mating_pool_indexes]
+                mating_pool = [source_population[i] for i in mating_pool_indexes]
             elif self.selection_mode == "SUS":
                 # TODO: find a way to implement this via numpy
                 # stochastic universal sampling selection
@@ -504,7 +512,7 @@ class Evolution:
                 pointers = [start + i * p_dist for i in range(self.n_mating)]
 
                 for p in pointers:
-                    for (i, genotype) in enumerate(source_populatiotion):
+                    for (i, genotype) in enumerate(source_population):
                         if p <= cum_probs[i]:
                             mating_pool.append(genotype)
                             break

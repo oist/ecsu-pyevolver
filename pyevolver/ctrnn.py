@@ -72,10 +72,7 @@ class BrainCTRNN:
         if self.biases is None:
             self.biases = self.rand_param(self.bias_range)  # random
         if self.weights is None:
-            self.weights = self.random_state.uniform(
-                self.weight_range[0], self.weight_range[1],
-                (self.num_neurons, self.num_neurons)
-            )  # random
+            self.randomize_weights()
         if self.weights.ndim == 1:
             self.weights = self.weights.reshape(self.num_neurons, -1)
             # auto reshape in case of flat array
@@ -87,9 +84,15 @@ class BrainCTRNN:
         self.random_seed = random_seed
         self.random_state = RandomState(self.random_seed)
 
-    def randomize_state(self):
+    def randomize_states(self):
         # To start the simulation it is often useful to randomize initial neuron activation around 0
         self.states = self.rand_param(self.state_range)
+
+    def randomize_weights(self):
+        self.weights = self.random_state.uniform(
+            self.weight_range[0], self.weight_range[1],
+            (self.num_neurons, self.num_neurons)
+        )
 
     def euler_step(self):
         # Compute the next state of the network given its current state and the simple euler equation
