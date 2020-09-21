@@ -69,9 +69,8 @@ class Evolution:
     population_size: int
     genotype_size: int
     evaluation_function: Callable
-    fitness_normalization_mode: str = 'FPS' # 'PERFORMANCE_MAX', 'PERFORMANCE_MIN', 
-                                            # 'PERFORMANCE_ZERO', 'PERFORMANCE_ABS_MAX', 
-                                            # 'FPS', 'RANK', 'SIGMA'
+    performance_objective: str = 'MAX' # 'MIN', 'ZERO', 'ABS_MAX'
+    fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
     selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
     reproduce_from_elite: bool = False
     reproduction_mode: str = 'HILL_CLIMBING' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
@@ -177,16 +176,17 @@ class Evolution:
         assert len(self.search_constraint) == self.genotype_size, \
             "The length of search_constraint should be equal to genotype_size"
 
+        # performance_objective         
+        accepted_values = ['MAX', 'MIN', 'ZERO', 'ABS_MAX']
+        assert self.performance_objective in accepted_values, \
+            'performance_objective should be either {}'.format(', '.join(accepted_values))
+
         # fitness_normalization_mode         
-        accepted_values = [
-            'PERFORMANCE_MAX', 'PERFORMANCE_MIN', 
-            'PERFORMANCE_ZERO', 'PERFORMANCE_ABS_MAX', 
-            'FPS', 'RANK', 'SIGMA'
-        ]
+        accepted_values = ['NONE', 'FPS', 'RANK', 'SIGMA']
         assert self.fitness_normalization_mode in accepted_values, \
             'fitness_normalization_mode should be either {}'.format(', '.join(accepted_values))
-        assert not self.fitness_normalization_mode.startswith('PERFORMANCE') or self.selection_mode == 'UNIFORM', \
-            "if fitness_normalization_mode is based on PERFORMANCE selection_mode must be UNIFORM (not normalized)" 
+        assert self.fitness_normalization_mode.startswith!='NONE' or self.selection_mode == 'UNIFORM', \
+            "if fitness_normalization_mode is 'NONE' (copy of PERFORMANCE), selection_mode must be UNIFORM (not normalized)" 
 
         # selection_mode
         accepted_values = ['UNIFORM', 'RWS', 'SUS']
@@ -283,24 +283,12 @@ class Evolution:
 
             self.timing.add_time('EVO1-RUN_eval_function', t)
 
-            # sort genotypes and performances by performance from best to worst
-            perf_sort_indexes = np.argsort(-self.performances)            
-            self.performances = np.take_along_axis(self.performances, perf_sort_indexes, axis=None)
-            perf_sort_indexes = perf_sort_indexes.reshape(self.population_size, 1)
-            self.population = np.take_along_axis(self.population, perf_sort_indexes, axis=0)
+            self.sort_population_on_performance()
 
-            # EQUIVALNET METHOD WITHOUT NP:
-            # sort genotypes and performances by performance from best to worst
-            # self.population, self.performances = \
-            #     zip(*sorted(zip(self.population, self.performances), 
-            #     key=lambda pair: pair[1], reverse=True))
-            # self.population = np.array(self.population)
-            # self.performances = np.array(self.performances)
-
-            self.timing.add_time('EVO1-RUN_sort', t)
+            self.timing.add_time('EVO1-RUN_sort_population', t)
 
             # update average/best/worst population performance
-            avg, best, worst = np.mean(self.performances), np.max(self.performances), np.min(self.performances)
+            avg, best, worst = np.mean(self.performances), self.performances[0], self.performances[-1]
             variance = np.var(self.performances)
             self.avg_performances.append(avg)
             self.best_performances.append(best)
@@ -335,6 +323,34 @@ class Evolution:
 
             # update generation
             self.generation += 1
+
+    def sort_population_on_performance(self):
+        
+        if self.performance_objective == 'MAX':            
+            performances_objectified = self.performances
+        elif self.performance_objective == 'MIN':
+            performances_objectified = - self.performances
+        elif self.performance_objective == 'ZERO':
+            performances_objectified = - np.abs(self.performances)
+        elif self.performance_objective == 'ABS_MAX':
+            performances_objectified = np.abs(self.performances)
+        else:
+            assert False
+
+        # sort genotypes and performances by performance_objectified from hight to low
+        perf_sort_indexes = np.argsort(-performances_objectified)            
+        self.performances = np.take_along_axis(self.performances, perf_sort_indexes, axis=None)
+        perf_sort_indexes = perf_sort_indexes.reshape(self.population_size, 1)
+        self.population = np.take_along_axis(self.population, perf_sort_indexes, axis=0)
+
+        # OLD METHOD WITHOUT NUMPY:
+        # sort genotypes and performances by performance from best to worst
+        # self.population, self.performances = \
+        #     zip(*sorted(zip(self.population, self.performances), 
+        #     key=lambda pair: pair[1], reverse=True))
+        # self.population = np.array(self.population)
+        # self.performances = np.array(self.performances)
+
 
     def reproduce(self):
         """Run reproduce via HILL_CLIMBING or GENETIC_ALGORITHM"""
@@ -447,18 +463,10 @@ class Evolution:
         """
         Update genotype fitness to relative values, retain sorting from best to worst.
         """        
-        if self.fitness_normalization_mode == 'PERFORMANCE_MAX':
-            # use performances as fitnesses (maximizing performance)
+        if self.fitness_normalization_mode == 'NONE':
+            # use performances as fitnesses
             self.fitnesses = np.copy(self.performances)
-        if self.fitness_normalization_mode == 'PERFORMANCE_MIN':
-            # use performances as fitnesses (minimizing performance)
-            self.fitnesses = - self.performances
-        if self.fitness_normalization_mode == 'PERFORMANCE_ZERO':
-            # use performances as fitnesses (best when performance is zero)
-            self.fitnesses = - np.abs(self.performances)
-        if self.fitness_normalization_mode == 'PERFORMANCE_ABS_MAX':
-            # use performances as fitnesses (best when performance is zero)
-            self.fitnesses = np.abs(self.performances)
+
         elif self.fitness_normalization_mode == 'FPS':  # (fitness-proportionate)
             avg_perf = self.avg_performances[-1]
             m = utils.linear_scaling(

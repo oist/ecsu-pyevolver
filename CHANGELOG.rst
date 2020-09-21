@@ -14,5 +14,4 @@ Version 0.0.2
 
 Version 0.0.3
 =============
-- changed 'NONE' option for 'fitness_normalization_mode' with 'PERFORMANCE_MAX'
-- adding similar related 'modes': 'PERFORMANCE_MIN', 'PERFORMANCE_ZERO', 'PERFORMANCE_ABS_MAX', 
+- introduced performance objectives: 'MAX', 'MIN', 'ZERO', 'ABS_MAX', 
