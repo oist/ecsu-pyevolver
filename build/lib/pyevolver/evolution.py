@@ -69,7 +69,9 @@ class Evolution:
     population_size: int
     genotype_size: int
     evaluation_function: Callable
-    fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
+    fitness_normalization_mode: str = 'FPS' # 'PERFORMANCE_MAX', 'PERFORMANCE_MIN', 
+                                            # 'PERFORMANCE_ZERO', 'PERFORMANCE_ABS_MAX', 
+                                            # 'FPS', 'RANK', 'SIGMA'
     selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
     reproduce_from_elite: bool = False
     reproduction_mode: str = 'HILL_CLIMBING' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
@@ -175,12 +177,16 @@ class Evolution:
         assert len(self.search_constraint) == self.genotype_size, \
             "The length of search_constraint should be equal to genotype_size"
 
-        # fitness_normalization_mode
-        accepted_values = ['NONE', 'FPS', 'RANK', 'SIGMA']
+        # fitness_normalization_mode         
+        accepted_values = [
+            'PERFORMANCE_MAX', 'PERFORMANCE_MIN', 
+            'PERFORMANCE_ZERO', 'PERFORMANCE_ABS_MAX', 
+            'FPS', 'RANK', 'SIGMA'
+        ]
         assert self.fitness_normalization_mode in accepted_values, \
             'fitness_normalization_mode should be either {}'.format(', '.join(accepted_values))
-        assert self.fitness_normalization_mode != 'NONE' or self.selection_mode == 'UNIFORM', \
-            "if fitness_normalization_mode is NONE selection_mode must be UNIFORM"
+        assert not self.fitness_normalization_mode.startswith('PERFORMANCE') or self.selection_mode == 'UNIFORM', \
+            "if fitness_normalization_mode is based on PERFORMANCE selection_mode must be UNIFORM (not normalized)" 
 
         # selection_mode
         accepted_values = ['UNIFORM', 'RWS', 'SUS']
@@ -440,10 +446,19 @@ class Evolution:
     def update_fitnesses(self):
         """
         Update genotype fitness to relative values, retain sorting from best to worst.
-        """
-        if self.fitness_normalization_mode == 'NONE':
-            # use performances as fitnesses
+        """        
+        if self.fitness_normalization_mode == 'PERFORMANCE_MAX':
+            # use performances as fitnesses (maximizing performance)
             self.fitnesses = np.copy(self.performances)
+        if self.fitness_normalization_mode == 'PERFORMANCE_MIN':
+            # use performances as fitnesses (minimizing performance)
+            self.fitnesses = - self.performances
+        if self.fitness_normalization_mode == 'PERFORMANCE_ZERO':
+            # use performances as fitnesses (best when performance is zero)
+            self.fitnesses = - np.abs(self.performances)
+        if self.fitness_normalization_mode == 'PERFORMANCE_ABS_MAX':
+            # use performances as fitnesses (best when performance is zero)
+            self.fitnesses = np.abs(self.performances)
         elif self.fitness_normalization_mode == 'FPS':  # (fitness-proportionate)
             avg_perf = self.avg_performances[-1]
             m = utils.linear_scaling(

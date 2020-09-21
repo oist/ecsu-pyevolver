@@ -8,7 +8,7 @@ with open('requirements.txt') as f:
 
 setuptools.setup(
     name="pyevolver",  # distribution name of the package; unique on pypi.org
-    version="0.0.2",
+    version="0.0.3",
     author="Federico Sangati, Katja Sangati",
     author_email="federico.sangati2@oist.jp, ekaterina.sangati@oist.jp",
     description="Package for evolving neural networks with Python.",
