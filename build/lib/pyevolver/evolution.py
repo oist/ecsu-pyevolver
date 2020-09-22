@@ -137,6 +137,11 @@ class Evolution:
             else 1 if self.max_generation == 0 \
             else FILE_NUM_ZFILL_DEFAULT
 
+        # conver performance_objective to float if it is a string with a number
+        f = utils.get_float(self.performance_objective)
+        if f is not None:
+            self.performance_objective = f
+
         self.timing = Timing(self.timeit)
 
         self.validate_params()
