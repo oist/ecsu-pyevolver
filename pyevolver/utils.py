@@ -6,7 +6,6 @@ import os
 def is_int(s):
     return re.match(r'^\d+$', s) is not None
 
-
 def linmap(vin, rin, rout):
     """
     Map a vector between 2 ranges.

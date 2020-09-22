@@ -14,4 +14,4 @@ Version 0.0.2
 
 Version 0.0.3
 =============
-- introduced performance objectives: 'MAX', 'MIN', 'ZERO', 'ABS_MAX', 
+- introduced param 'performance_objective': 'MAX', 'MIN', 'ABS_MAX', float value

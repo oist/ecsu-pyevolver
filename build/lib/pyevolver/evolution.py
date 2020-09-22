@@ -2,7 +2,7 @@ import os
 import re
 import json
 from copy import deepcopy
-from typing import List, Callable
+from typing import List, Callable, Union
 from dataclasses import dataclass, field, asdict
 from itertools import cycle
 import numpy as np
@@ -69,7 +69,7 @@ class Evolution:
     population_size: int
     genotype_size: int
     evaluation_function: Callable
-    performance_objective: str = 'MAX' # 'MIN', 'ZERO', 'ABS_MAX'
+    performance_objective: Union[str,float] = 'MAX' # 'MIN', 'ABS_MAX', float value
     fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
     selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
     reproduce_from_elite: bool = False
@@ -177,8 +177,9 @@ class Evolution:
             "The length of search_constraint should be equal to genotype_size"
 
         # performance_objective         
-        accepted_values = ['MAX', 'MIN', 'ZERO', 'ABS_MAX']
-        assert self.performance_objective in accepted_values, \
+        accepted_values = ['MAX', 'MIN', 'ABS_MAX']
+        assert type(self.performance_objective) in [float,int] or \
+            self.performance_objective in accepted_values, \
             'performance_objective should be either {}'.format(', '.join(accepted_values))
 
         # fitness_normalization_mode         
@@ -326,16 +327,17 @@ class Evolution:
 
     def sort_population_on_performance(self):
         
-        if self.performance_objective == 'MAX':            
-            performances_objectified = self.performances
-        elif self.performance_objective == 'MIN':
-            performances_objectified = - self.performances
-        elif self.performance_objective == 'ZERO':
-            performances_objectified = - np.abs(self.performances)
-        elif self.performance_objective == 'ABS_MAX':
-            performances_objectified = np.abs(self.performances)
+        if type(self.performance_objective) is str:
+            if self.performance_objective == 'MAX':            
+                performances_objectified = self.performances
+            elif self.performance_objective == 'MIN':
+                performances_objectified = - self.performances
+            elif self.performance_objective == 'ABS_MAX':
+                performances_objectified = np.abs(self.performances)
         else:
-            assert False
+            # minimizing the distance between performance and perf objective
+            # when self.performance_objective==0 this would be identical to 'ABS_MIN'
+            performances_objectified = - np.abs(self.performances - self.performance_objective)
 
         # sort genotypes and performances by performance_objectified from hight to low
         perf_sort_indexes = np.argsort(-performances_objectified)            

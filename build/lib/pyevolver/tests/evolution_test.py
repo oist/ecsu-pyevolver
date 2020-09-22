@@ -349,7 +349,7 @@ def test_v003():
         population_size=4,
         genotype_size=2,
         evaluation_function=lambda pop, seeds: np.sum(pop, axis=1), #np.arange(1,0,-1/len(pop)),
-        performance_objective='ABS_MAX', #MAX MIN ZERO ABS_MAX
+        performance_objective=0.5, #MAX MIN ZERO ABS_MAX
         fitness_normalization_mode='NONE',
         selection_mode='UNIFORM', # UNIFORM, SUS, RWS
         reproduce_from_elite=True,
