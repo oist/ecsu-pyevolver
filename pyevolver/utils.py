@@ -40,14 +40,8 @@ def rolling_mean(prev, current, counter):
     return (prev * (counter - 1) + current) / counter
 
 
-def add_noise(vector, random_state, variance=0.05):
-    magnitude = random_state.normal(0, variance)
-    return vector + magnitude
-
-
-def vector_norm(vector):
-    return np.sqrt(vector.dot(vector))
-
+def add_noise(vector, random_state, noise_level):
+    return vector + noise_level * random_state.normal(0, 1, vector.shape)
 
 def make_rand_vector(dims, random_state):
     """
@@ -55,8 +49,7 @@ def make_rand_vector(dims, random_state):
     is a random Gaussian and then normalizing the resulting vector.
     """
     vec = random_state.normal(0, 1, dims)
-    # mag = sum(vec ** 2) ** .5
-    mag = vector_norm(vec)
+    mag = sum(vec ** 2) ** .5    
     return vec / mag
 
 
