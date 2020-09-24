@@ -75,6 +75,13 @@ def make_dir_if_not_exists(dir_path):
         return
     os.makedirs(dir_path)
 
+np_intinfo = np.iinfo(int)
+
+def random_int(random_state=None, size=None):
+    if random_state is None:
+        return np.random.randint(np_intinfo.min, np_intinfo.max, size)
+    else:
+        return random_state.randint(np_intinfo.min, np_intinfo.max, size)
 
 if __name__ == "__main__":
     print(is_int('3'))

@@ -345,7 +345,7 @@ def test_v003():
     utils.make_dir_if_not_exists(folder_path)
 
     evo = Evolution(
-        random_seed=np.random.randint(100000),
+        random_seed=utils.random_int(),
         population_size=4,
         genotype_size=2,
         evaluation_function=lambda pop, seeds: np.sum(pop, axis=1), #np.arange(1,0,-1/len(pop)),

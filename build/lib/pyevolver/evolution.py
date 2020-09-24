@@ -11,6 +11,7 @@ from pyevolver import json_numpy
 from pyevolver.timing import Timing
 from numpy.random import RandomState
 
+
 np.seterr(over='ignore')
 
 # GLOBAL DEFAULT PARAMS
@@ -279,7 +280,7 @@ class Evolution:
 
         while self.generation <= self.max_generation:
             # evaluate all genotypes on the task
-            self.pop_eval_random_seed = self.random_state.randint(0, 2 ** 32, self.population_size)
+            self.pop_eval_random_seed = utils.random_int(self.random_state, self.population_size)
 
             self.performances = self.evaluation_function(self.population, self.pop_eval_random_seed)                        
             if type(self.performances) != np.ndarray:
