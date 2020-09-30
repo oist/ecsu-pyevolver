@@ -79,9 +79,9 @@ np_intinfo = np.iinfo(int)
 
 def random_int(random_state=None, size=None):
     if random_state is None:
-        return np.random.randint(np_intinfo.min, np_intinfo.max, size)
+        return np.random.randint(0, 2**32 - 1, size)
     else:
-        return random_state.randint(np_intinfo.min, np_intinfo.max, size)
+        return random_state.randint(0, 2**32 - 1, size)
 
 if __name__ == "__main__":
     print(is_int('3'))
