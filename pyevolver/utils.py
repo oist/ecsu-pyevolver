@@ -75,8 +75,6 @@ def make_dir_if_not_exists(dir_path):
         return
     os.makedirs(dir_path)
 
-np_intinfo = np.iinfo(int)
-
 def random_int(random_state=None, size=None):
     if random_state is None:
         return np.random.randint(0, 2**32 - 1, size)
