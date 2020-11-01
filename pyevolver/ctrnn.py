@@ -97,6 +97,11 @@ class BrainCTRNN:
     def euler_step(self):
         # Compute the next state of the network given its current state and the simple euler equation
         # update the state of all neurons
+        # let n the number of neurons
+        # output shape is (n, ): [O1, O2, ..., ON]
+        # weights shape is (n, n): [[W11,W12,...,W1n],[W21,W22,...,W2n],...,[Wn1,Wn2,...,Wnn]]
+        # np.dot(outputs, weights) returns a vector of shape (n,): (n,)·(n,n) = (n,)
+        # [O1·W11 + O2·W21 + ... + On·Wn1, O1·W12 + O2·W22 + ... + On·Wn2, ..., O1·W1n + O2·W2n + ... + On·Wnn]
         self.dy_dt = \
             self.step_size * \
             np.multiply(
