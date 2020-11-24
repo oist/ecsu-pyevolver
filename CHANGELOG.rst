@@ -15,3 +15,7 @@ Version 0.0.2
 Version 0.0.3
 =============
 - introduced param 'performance_objective': 'MAX', 'MIN', 'ABS_MAX', float value
+
+Version 0.1.0
+=============
+- updated min max rand int in utils
