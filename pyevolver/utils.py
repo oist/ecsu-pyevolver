@@ -76,10 +76,11 @@ def make_dir_if_not_exists(dir_path):
     os.makedirs(dir_path)
 
 def random_int(random_state=None, size=None):
+    # min max are based on np int32 limits
     if random_state is None:
-        return np.random.randint(0, 2**32 - 1, size)
+        return np.random.randint(-2147483648, 2147483647, size)
     else:
-        return random_state.randint(0, 2**32 - 1, size)
+        return random_state.randint(-2147483648, 2147483647, size)
 
 if __name__ == "__main__":
     print(is_int('3'))
