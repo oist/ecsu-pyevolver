@@ -94,7 +94,7 @@ class Evolution:
 
     random_seed: int = 0
     random_state: RandomState = None
-    pop_eval_random_seed: np.ndarray = None  # initialized at every generation
+    pop_eval_random_seeds: np.ndarray = None  # initialized at every generation
 
     # other field (no need to define them outside)
     generation: int = 0  # the current generation number
@@ -280,9 +280,9 @@ class Evolution:
 
         while self.generation <= self.max_generation:
             # evaluate all genotypes on the task
-            self.pop_eval_random_seed = utils.random_int(self.random_state, self.population_size)
+            self.pop_eval_random_seeds = utils.random_int(self.random_state, self.population_size)
 
-            self.performances = self.evaluation_function(self.population, self.pop_eval_random_seed)                        
+            self.performances = self.evaluation_function(self.population, self.pop_eval_random_seeds)                        
             if type(self.performances) != np.ndarray:
                 self.performances = np.array(self.performances)
 
@@ -338,16 +338,18 @@ class Evolution:
                 performances_objectified = self.performances
             elif self.performance_objective == 'MIN':
                 performances_objectified = - self.performances
-            elif self.performance_objective == 'ABS_MAX':
+            else:
+                assert self.performance_objective == 'ABS_MAX'
                 performances_objectified = np.abs(self.performances)
         else:
             # minimizing the distance between performance and perf objective
             # when self.performance_objective==0 this would be identical to 'ABS_MIN'
             performances_objectified = - np.abs(self.performances - self.performance_objective)
 
-        # sort genotypes and performances by performance_objectified from hight to low
+        # sort genotypes, performances and reand_seeds by performance_objectified from hight to low
         perf_sort_indexes = np.argsort(-performances_objectified)            
         self.performances = np.take_along_axis(self.performances, perf_sort_indexes, axis=None)
+        self.pop_eval_random_seeds = np.take_along_axis(self.pop_eval_random_seeds, perf_sort_indexes, axis=None)
         perf_sort_indexes = perf_sort_indexes.reshape(self.population_size, 1)
         self.population = np.take_along_axis(self.population, perf_sort_indexes, axis=0)
 
@@ -444,7 +446,7 @@ class Evolution:
 
         # 2) Reevaluate
         if self.reevaluate:
-            parent_performance = np.array(self.evaluation_function(parent_population, self.pop_eval_random_seed))
+            parent_performance = np.array(self.evaluation_function(parent_population, self.pop_eval_random_seeds))
         else:
             assert False, \
                 "reevaluate params has to be True. " \
@@ -456,7 +458,7 @@ class Evolution:
         self.timing.add_time('EVO2-HC_3_mutate', t)
 
         # 4) Calculate new performances
-        self.performance = np.array(self.evaluation_function(self.population, self.pop_eval_random_seed))
+        self.performance = np.array(self.evaluation_function(self.population, self.pop_eval_random_seeds))
         self.timing.add_time('EVO2-HC_4_compute_perf', t)
 
         # 5) Check if performace worsened and in this case retrieve agent from parent population
@@ -640,7 +642,7 @@ class Evolution:
         with open(file_path) as f_in:
             obj_dict = json.load(f_in)
 
-        for k in ['population', 'performances', 'fitnesses', 'pop_eval_random_seed']:
+        for k in ['population', 'performances', 'fitnesses', 'pop_eval_random_seeds']:
             # assert type(obj_dict[k]) == np.ndarray
             obj_dict[k] = np.array(obj_dict[k])
 
