@@ -351,13 +351,12 @@ class Evolution:
             # when self.performance_objective==0 this would be identical to 'ABS_MIN'
             performances_objectified = - np.abs(self.performances - self.performance_objective)
 
-        # sort genotypes, performances and reand_seeds by performance_objectified from hight to low
+        # sort genotypes, performances by performance_objectified from hight to low
         self.population_sorted_indexes = np.argsort(-performances_objectified)            
         self.performances = np.take_along_axis(self.performances, self.population_sorted_indexes, axis=None)
-        # self.pop_eval_random_seeds = np.take_along_axis(self.pop_eval_random_seeds, self.population_sorted_indexes, axis=None)
-        population_sorted_indexes_col = self.population_sorted_indexes.reshape(-1, 1) # convert in column vector
+        population_sorted_indexes_reshp = self.population_sorted_indexes.reshape(-1, 1) # convert in column vector
         self.population_unsorted = self.population # keep track of the original population to ensure reproducibility
-        self.population = np.take_along_axis(self.population_unsorted, population_sorted_indexes_col, axis=0)
+        self.population = np.take_along_axis(self.population_unsorted, population_sorted_indexes_reshp, axis=0)
 
         # OLD METHOD WITHOUT NUMPY:
         # sort genotypes and performances by performance from best to worst

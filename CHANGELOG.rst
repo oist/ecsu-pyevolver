@@ -22,4 +22,4 @@ Version 0.1.0
 
 Version 0.2.0
 =============
-- sorting random_seeds on performance to ensure reproducibility
+- keep track of unsorted population and sorted index for reproducibility
