@@ -98,10 +98,15 @@ class Evolution:
 
     # other field (no need to define them outside)
     generation: int = 0  # the current generation number
-    population: np.ndarray = None  # the list of population genotypes
+    population: np.ndarray = None  # the list of population genotypes (sorted by performance)
+    population_unsorted: np.ndarray = None  # the list of population genotypes (before sorting)
     # (will be initialized in __post_init__)
     performances: np.ndarray = None  # performances of the genotypes
     fitnesses: np.ndarray = None  # fitnesses of the genotypes
+
+    population_sorted_indexes: np.ndarray = None  
+    # keep track of indexes in sorted population
+    # population_sorted_indexes[0] is the index of the agent with best performance
 
     # collect average, best and worst performances across generations
     avg_performances: List[float] = field(default_factory=list)
@@ -347,11 +352,12 @@ class Evolution:
             performances_objectified = - np.abs(self.performances - self.performance_objective)
 
         # sort genotypes, performances and reand_seeds by performance_objectified from hight to low
-        perf_sort_indexes = np.argsort(-performances_objectified)            
-        self.performances = np.take_along_axis(self.performances, perf_sort_indexes, axis=None)
-        self.pop_eval_random_seeds = np.take_along_axis(self.pop_eval_random_seeds, perf_sort_indexes, axis=None)
-        perf_sort_indexes = perf_sort_indexes.reshape(self.population_size, 1)
-        self.population = np.take_along_axis(self.population, perf_sort_indexes, axis=0)
+        self.population_sorted_indexes = np.argsort(-performances_objectified)            
+        self.performances = np.take_along_axis(self.performances, self.population_sorted_indexes, axis=None)
+        # self.pop_eval_random_seeds = np.take_along_axis(self.pop_eval_random_seeds, self.population_sorted_indexes, axis=None)
+        population_sorted_indexes_col = self.population_sorted_indexes.reshape(-1, 1) # convert in column vector
+        self.population_unsorted = self.population # keep track of the original population to ensure reproducibility
+        self.population = np.take_along_axis(self.population_unsorted, population_sorted_indexes_col, axis=0)
 
         # OLD METHOD WITHOUT NUMPY:
         # sort genotypes and performances by performance from best to worst
