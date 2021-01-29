@@ -15,6 +15,8 @@ from numpy.random import RandomState
 np.seterr(over='ignore')
 
 # GLOBAL DEFAULT PARAMS
+ROUNDING_TOLERANCE = 1e-20 # e.g., probabilities close to zero can become small negative numbers
+CUM_PROB_TOLERANCE = 1e-15 # total cumulative probabilities might differ from 1 up to this error
 FILE_NUM_ZFILL_DEFAULT = 5  # number of zeros for generation number in output file (e.g., 00001)
 DEFAULT_MUTATION_VARIANCE = 0.1
 DEFAULT_MAX_EXPECTED_OFFSPRING = 1.1
@@ -94,7 +96,7 @@ class Evolution:
 
     random_seed: int = 0
     random_state: RandomState = None
-    pop_eval_random_seeds: np.ndarray = None  # initialized at every generation
+    pop_eval_random_seed: int = None  # initialized at every generation
 
     # other field (no need to define them outside)
     generation: int = 0  # the current generation number
@@ -118,6 +120,8 @@ class Evolution:
     def __post_init__(self):
 
         assert self.population_size % 2 == 0, "Population size must be even"
+
+        self.sqrt_mutation_variance = np.sqrt(self.mutation_variance)
 
         if self.random_state is None:
             self.random_state = RandomState(self.random_seed)
@@ -197,7 +201,7 @@ class Evolution:
         accepted_values = ['NONE', 'FPS', 'RANK', 'SIGMA']
         assert self.fitness_normalization_mode in accepted_values, \
             'fitness_normalization_mode should be either {}'.format(', '.join(accepted_values))
-        assert self.fitness_normalization_mode.startswith!='NONE' or self.selection_mode == 'UNIFORM', \
+        assert self.fitness_normalization_mode!='NONE' or self.selection_mode == 'UNIFORM', \
             "if fitness_normalization_mode is 'NONE' (copy of PERFORMANCE), selection_mode must be UNIFORM (not normalized)" 
 
         # selection_mode
@@ -285,9 +289,12 @@ class Evolution:
 
         while self.generation <= self.max_generation:
             # evaluate all genotypes on the task
-            self.pop_eval_random_seeds = utils.random_int(self.random_state, self.population_size)
+            self.pop_eval_random_seed = utils.random_int(self.random_state)
 
-            self.performances = self.evaluation_function(self.population, self.pop_eval_random_seeds)                        
+            # run evaluation function
+            self.performances = self.evaluation_function(
+                self.population, self.pop_eval_random_seed)                        
+            
             if type(self.performances) != np.ndarray:
                 self.performances = np.array(self.performances)
 
@@ -451,7 +458,7 @@ class Evolution:
 
         # 2) Reevaluate
         if self.reevaluate:
-            parent_performance = np.array(self.evaluation_function(parent_population, self.pop_eval_random_seeds))
+            parent_performance = np.array(self.evaluation_function(parent_population, self.pop_eval_random_seed))
         else:
             assert False, \
                 "reevaluate params has to be True. " \
@@ -463,7 +470,7 @@ class Evolution:
         self.timing.add_time('EVO2-HC_3_mutate', t)
 
         # 4) Calculate new performances
-        self.performance = np.array(self.evaluation_function(self.population, self.pop_eval_random_seeds))
+        self.performance = np.array(self.evaluation_function(self.population, self.pop_eval_random_seed))
         self.timing.add_time('EVO2-HC_4_compute_perf', t)
 
         # 5) Check if performace worsened and in this case retrieve agent from parent population
@@ -537,8 +544,16 @@ class Evolution:
             cycle_source_population = cycle(source_population)
             mating_pool = [next(cycle_source_population) for _ in range(self.n_mating)]
         else:
+            min_fitness = np.min(self.fitnesses)
+            assert min_fitness > - ROUNDING_TOLERANCE, \
+                "Found neg fitness: {}".format(min_fitness)
+            if min_fitness < 0:
+                # setting small neg values due to rounding errors to zeros
+                self.fitnesses[self.fitnesses<0] = 0
             cum_probs = np.cumsum(self.fitnesses)
-            assert 0 <= abs(cum_probs[-1] - 1.0) < 1E-13
+            cum_probs_error = abs(cum_probs[-1] - 1.0)
+            assert 0 <= abs(cum_probs_error) < CUM_PROB_TOLERANCE, \
+                "Too big cum_probs_error: {}".format(cum_probs_error)
             if self.selection_mode == "RWS":
                 # roulette wheel selection
                 mating_pool_indexes = self.random_state.choice(
@@ -607,7 +622,7 @@ class Evolution:
         return child1, child2
 
     def mutate(self, genotype):
-        magnitude = self.random_state.normal(0, np.sqrt(self.mutation_variance))
+        magnitude = self.random_state.normal(0, self.sqrt_mutation_variance)
         unit_vector = utils.make_rand_vector(len(genotype), self.random_state)
         mutant = np.where(
             self.search_constraint,
@@ -647,7 +662,7 @@ class Evolution:
         with open(file_path) as f_in:
             obj_dict = json.load(f_in)
 
-        for k in ['population', 'performances', 'fitnesses', 'pop_eval_random_seeds']:
+        for k in ['population', 'performances', 'fitnesses']:
             # assert type(obj_dict[k]) == np.ndarray
             obj_dict[k] = np.array(obj_dict[k])
 
