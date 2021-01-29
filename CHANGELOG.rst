@@ -23,3 +23,9 @@ Version 0.1.0
 Version 0.2.0
 =============
 - keep track of unsorted population and sorted index for reproducibility
+
+Version 0.3.0
+=============
+- single pop_eval_random_seed (no longer list of seeds)
+- taking into rounding error for prob and cum prob tolerances
+- fixes on checking parameters

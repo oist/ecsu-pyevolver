@@ -1,3 +1,8 @@
+# HOW TO SUBMIT NEW VERSION
+# 1. Change version below (line 15)
+# 2. Update CHANGELOG.rst
+# 3. RUN: python setup.py sdist bdist_wheel
+
 import setuptools
 
 with open("README.md", "r") as fh:
@@ -8,7 +13,7 @@ with open('requirements.txt') as f:
 
 setuptools.setup(
     name="pyevolver",  # distribution name of the package; unique on pypi.org
-    version="0.2.0",
+    version="0.3.0",
     author="Federico Sangati, Katja Sangati",
     author_email="federico.sangati2@oist.jp, ekaterina.sangati@oist.jp",
     description="Package for evolving neural networks with Python.",
@@ -27,4 +32,3 @@ setuptools.setup(
     ],
 )
 
-# RUN: python setup.py sdist bdist_wheel
