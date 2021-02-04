@@ -122,7 +122,8 @@ class Evolution:
 
         assert self.num_populations > 0, "Number of populations should be greater than zero"
 
-        assert self.population_size % 2 == 0, "Population size must be even"
+        assert self.population_size % 4 == 0, "Population size must be divisible by 4"
+        # otherwise n_elite + n_mating may be greater than population_size    
 
         self.sqrt_mutation_variance = np.sqrt(self.mutation_variance)
 
@@ -170,12 +171,13 @@ class Evolution:
             # self.n_elite: number of best agents to preserve (only used in genetic algorithm)
             # self.n_fillup: agents to be randomly generated
             self.n_elite = int(
-                np.floor(self.population_size * self.elitist_fraction + 0.5)
+                np.floor(self.population_size * self.elitist_fraction + 0.5) # at least one
             )  # children from elite group
             self.n_mating = int(np.floor(
                 self.population_size * self.mating_fraction + 0.5 # at least one
             ))  # children from mating population
             self.n_fillup = self.population_size - (self.n_elite + self.n_mating)  # children from random fillup
+            assert all(x >= 0 for x in [self.n_elite, self.n_mating, self.n_fillup])
             assert self.n_elite + self.n_mating + self.n_fillup == self.population_size
         else:  # 'HILL_CLIMBING'
             self.n_mating = self.population_size
