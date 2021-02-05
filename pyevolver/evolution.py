@@ -13,7 +13,7 @@ from numpy.random import RandomState
 np.seterr(over='ignore')
 
 # GLOBAL DEFAULT PARAMS
-ROUNDING_TOLERANCE = 1e-20 # e.g., probabilities close to zero can become small negative numbers
+ROUNDING_TOLERANCE = 1e-17 # e.g., probabilities close to zero can become small negative numbers
 CUM_PROB_TOLERANCE = 1e-15 # total cumulative probabilities might differ from 1 up to this error
 FILE_NUM_ZFILL_DEFAULT = 5  # number of zeros for generation number in output file (e.g., 00001)
 DEFAULT_MUTATION_VARIANCE = 0.1
@@ -47,7 +47,7 @@ class Evolution:
     :param search_constraint: (list of bool) flag whether to clip a specific site in
         a genotype (default to all True)
     :param reevaluate: (bool) whether to re-evaluate the individual if it's retained
-        in the new generation
+        in the new generation (used only in hill-climbing)
     :param max_generation: (int) maximum generations to evolve (not used if
         termination_function is provided)
     :param termination_function: (func) function to check if search should terminate
@@ -76,7 +76,7 @@ class Evolution:
     fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
     selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
     reproduce_from_elite: bool = False
-    reproduction_mode: str = 'HILL_CLIMBING' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
+    reproduction_mode: str = 'GENETIC_ALGORITHM' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
     mutation_variance: float = DEFAULT_MUTATION_VARIANCE
     max_generation: int = 100
     termination_function: Callable = None
@@ -91,7 +91,7 @@ class Evolution:
     n_fillup: int = None
     crossover_mode: str = 'UNIFORM'
     search_constraint: np.ndarray = None  # this will be converted to all True by default in __post_init__
-    reevaluate: bool = True
+    reevaluate: bool = True # only used in hill-climbing
     max_expected_offspring: float = DEFAULT_MAX_EXPECTED_OFFSPRING
 
     random_seed: int = 0
@@ -321,11 +321,13 @@ class Evolution:
             assert self.performances.shape == expected_perf_shape, \
                 "Evaluation function didn't return performances with shape {}".format(expected_perf_shape)
             
+            assert (self.performances >=0).all(), \
+                "Performance must be non-negative"
+
             self.timing.add_time('EVO1-RUN_eval_function', t)
 
             # sorting population and performances on performances
             self.sort_population_on_performance()
-
             self.timing.add_time('EVO1-RUN_sort_population', t)
 
             # update average/best/worst population performance
@@ -337,10 +339,6 @@ class Evolution:
             self.best_performances.append(best)
             self.worst_performances.append(worst)
             self.timing.add_time('EVO1-RUN_stats', t)
-
-            # Compute fitnesses (based on performances)
-            self.update_fitnesses()
-            self.timing.add_time('EVO1-RUN_update_fitness', t)
 
             print_stats = lambda a : '|'.join(['{:.5f}'.format(x) for x in a])
 
@@ -363,15 +361,19 @@ class Evolution:
                 self.save_to_file()
             self.timing.add_time('EVO1-RUN_savefile', t)
 
-            # run reproduce
-            self.reproduce()
+            # Compute fitnesses (based on performances) - used in reproduce
+            self.update_fitnesses()
+            self.timing.add_time('EVO1-RUN_update_fitness', t)
+
+            # run reproduce (update fitnesses and run genetic or hill-climbing)
+            self.reproduce()             
             self.timing.add_time('EVO1-RUN_reproduce', t)
 
             # update generation
             self.generation += 1
 
-    def sort_population_on_performance(self):
-        
+    def sort_population_on_performance(self):     
+        # performances must be non-negative (>=0)           
         if type(self.performance_objective) is str:
             if self.performance_objective == 'MAX':            
                 performances_objectified = self.performances
@@ -447,11 +449,12 @@ class Evolution:
 
         # 4) Create children with crossover or apply mutation
         mating_finish = self.n_elite + self.n_mating
-        newpop_counter = self.n_elite  # track where we are in the new population
+        newpop_counter = None  # track where we are in the new population
         
         for p in range(self.num_populations):            
             
             mating_counter = 0
+            newpop_counter = self.n_elite # track where we are in the new population
             
             while newpop_counter < mating_finish:
                 not_last = mating_finish - newpop_counter > 1
@@ -525,8 +528,8 @@ class Evolution:
         Update genotype fitness to relative values, retain sorting from best to worst.
         """        
         if self.fitness_normalization_mode == 'NONE':
-            # use performances as fitnesses
-            self.fitnesses = np.copy(self.performances)
+            # do not use fitness in selection
+            self.fitnesses = None
 
         elif self.fitness_normalization_mode == 'FPS':  # (fitness-proportionate)
             self.fitnesses = np.zeros(self.performances.shape) # same shape as performances
@@ -736,7 +739,7 @@ class Evolution:
         with open(file_path) as f_in:
             obj_dict = json.load(f_in)
 
-        for k in ['population', 'performances', 'fitnesses']:
+        for k in ['population', 'population_unsorted', 'performances', 'fitnesses']:
             # assert type(obj_dict[k]) == np.ndarray
             obj_dict[k] = np.array(obj_dict[k])
 
