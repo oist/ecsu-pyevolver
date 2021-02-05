@@ -14,7 +14,7 @@ np.seterr(over='ignore')
 
 # GLOBAL DEFAULT PARAMS
 ROUNDING_TOLERANCE = 1e-17 # e.g., probabilities close to zero can become small negative numbers
-CUM_PROB_TOLERANCE = 1e-15 # total cumulative probabilities might differ from 1 up to this error
+CUM_PROB_TOLERANCE = 1e-14 # total cumulative probabilities might differ from 1 up to this error
 FILE_NUM_ZFILL_DEFAULT = 5  # number of zeros for generation number in output file (e.g., 00001)
 DEFAULT_MUTATION_VARIANCE = 0.1
 DEFAULT_MAX_EXPECTED_OFFSPRING = 1.1
@@ -47,7 +47,7 @@ class Evolution:
     :param search_constraint: (list of bool) flag whether to clip a specific site in
         a genotype (default to all True)
     :param reevaluate: (bool) whether to re-evaluate the individual if it's retained
-        in the new generation (used only in hill-climbing)
+        in the new generation
     :param max_generation: (int) maximum generations to evolve (not used if
         termination_function is provided)
     :param termination_function: (func) function to check if search should terminate
@@ -76,7 +76,7 @@ class Evolution:
     fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
     selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
     reproduce_from_elite: bool = False
-    reproduction_mode: str = 'GENETIC_ALGORITHM' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
+    reproduction_mode: str = 'HILL_CLIMBING' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
     mutation_variance: float = DEFAULT_MUTATION_VARIANCE
     max_generation: int = 100
     termination_function: Callable = None
@@ -91,7 +91,7 @@ class Evolution:
     n_fillup: int = None
     crossover_mode: str = 'UNIFORM'
     search_constraint: np.ndarray = None  # this will be converted to all True by default in __post_init__
-    reevaluate: bool = True # only used in hill-climbing
+    reevaluate: bool = True
     max_expected_offspring: float = DEFAULT_MAX_EXPECTED_OFFSPRING
 
     random_seed: int = 0
