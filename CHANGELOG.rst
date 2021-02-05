@@ -29,3 +29,11 @@ Version 0.3.0
 - single pop_eval_random_seed (no longer list of seeds)
 - taking into rounding error for prob and cum prob tolerances
 - fixes on checking parameters
+
+Version 0.4.0
+=============
+- multi population (no backward compatible)
+- adjusting rounding tolerances
+- introduce check on perfromances (non-negative)
+- put fitenss to None if fitness_norm_mode is NONE
+- included population_unsorted in numpy conversion in load_from_file

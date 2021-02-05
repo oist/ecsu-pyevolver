@@ -1,10 +1,8 @@
 import os
 import re
 import json
-from copy import deepcopy
 from typing import List, Callable, Union
 from dataclasses import dataclass, field, asdict
-from itertools import cycle
 import numpy as np
 from pyevolver import utils
 from pyevolver import json_numpy
@@ -15,8 +13,8 @@ from numpy.random import RandomState
 np.seterr(over='ignore')
 
 # GLOBAL DEFAULT PARAMS
-ROUNDING_TOLERANCE = 1e-20 # e.g., probabilities close to zero can become small negative numbers
-CUM_PROB_TOLERANCE = 1e-15 # total cumulative probabilities might differ from 1 up to this error
+ROUNDING_TOLERANCE = 1e-17 # e.g., probabilities close to zero can become small negative numbers
+CUM_PROB_TOLERANCE = 1e-14 # total cumulative probabilities might differ from 1 up to this error
 FILE_NUM_ZFILL_DEFAULT = 5  # number of zeros for generation number in output file (e.g., 00001)
 DEFAULT_MUTATION_VARIANCE = 0.1
 DEFAULT_MAX_EXPECTED_OFFSPRING = 1.1
@@ -32,6 +30,7 @@ class Evolution:
     # noinspection PyUnresolvedReferences
     """
     Class that executes genetic search.
+    :param num_populations: (int) number of populations (default 1)
     :param population_size: (int) size of the population
     :param genotype_size: (int) size of the genotype vector
     :param evaluation_function: (func) function to evaluate genotype performance.
@@ -48,7 +47,7 @@ class Evolution:
     :param search_constraint: (list of bool) flag whether to clip a specific site in
         a genotype (default to all True)
     :param reevaluate: (bool) whether to re-evaluate the individual if it's retained
-        in the new generation
+        in the new generation (used only in hill-climbing)
     :param max_generation: (int) maximum generations to evolve (not used if
         termination_function is provided)
     :param termination_function: (func) function to check if search should terminate
@@ -68,15 +67,16 @@ class Evolution:
     :param max_expected_offspring: (float) number of offspring to be allocated to the
         best individual, best between 1 and 2
     """
-
+    
     population_size: int
     genotype_size: int
     evaluation_function: Callable
+    num_populations: int = 1
     performance_objective: Union[str,float] = 'MAX' # 'MIN', 'ABS_MAX', float value
     fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
     selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
     reproduce_from_elite: bool = False
-    reproduction_mode: str = 'HILL_CLIMBING' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
+    reproduction_mode: str = 'GENETIC_ALGORITHM' # 'HILL_CLIMBING', 'GENETIC_ALGORITHM'
     mutation_variance: float = DEFAULT_MUTATION_VARIANCE
     max_generation: int = 100
     termination_function: Callable = None
@@ -91,7 +91,7 @@ class Evolution:
     n_fillup: int = None
     crossover_mode: str = 'UNIFORM'
     search_constraint: np.ndarray = None  # this will be converted to all True by default in __post_init__
-    reevaluate: bool = True
+    reevaluate: bool = True # only used in hill-climbing
     max_expected_offspring: float = DEFAULT_MAX_EXPECTED_OFFSPRING
 
     random_seed: int = 0
@@ -109,17 +109,21 @@ class Evolution:
     population_sorted_indexes: np.ndarray = None  
     # keep track of indexes in sorted population
     # population_sorted_indexes[0] is the index of the agent with best performance
+    # in the unsorted population
 
     # collect average, best and worst performances across generations
-    avg_performances: List[float] = field(default_factory=list)
-    best_performances: List[float] = field(default_factory=list)
-    worst_performances: List[float] = field(default_factory=list)
+    avg_performances: List[List[float]] = field(default_factory=list)
+    best_performances: List[List[float]] = field(default_factory=list)
+    worst_performances: List[List[float]] = field(default_factory=list)
 
     timeit: bool = False
 
     def __post_init__(self):
 
-        assert self.population_size % 2 == 0, "Population size must be even"
+        assert self.num_populations > 0, "Number of populations should be greater than zero"
+
+        assert self.population_size % 4 == 0, "Population size must be divisible by 4"
+        # otherwise n_elite + n_mating may be greater than population_size    
 
         self.sqrt_mutation_variance = np.sqrt(self.mutation_variance)
 
@@ -136,7 +140,7 @@ class Evolution:
             # create a set of random genotypes
             self.population = self.random_state.uniform(
                 MIN_SEARCH_VALUE, MAX_SEARCH_VALUE,
-                [self.population_size, self.genotype_size]
+                [self.num_populations, self.population_size, self.genotype_size]
             )
 
         if self.search_constraint is None:
@@ -167,12 +171,13 @@ class Evolution:
             # self.n_elite: number of best agents to preserve (only used in genetic algorithm)
             # self.n_fillup: agents to be randomly generated
             self.n_elite = int(
-                np.floor(self.population_size * self.elitist_fraction + 0.5)
+                np.floor(self.population_size * self.elitist_fraction + 0.5) # at least one
             )  # children from elite group
             self.n_mating = int(np.floor(
                 self.population_size * self.mating_fraction + 0.5 # at least one
             ))  # children from mating population
             self.n_fillup = self.population_size - (self.n_elite + self.n_mating)  # children from random fillup
+            assert all(x >= 0 for x in [self.n_elite, self.n_mating, self.n_fillup])
             assert self.n_elite + self.n_mating + self.n_fillup == self.population_size
         else:  # 'HILL_CLIMBING'
             self.n_mating = self.population_size
@@ -208,6 +213,10 @@ class Evolution:
         accepted_values = ['UNIFORM', 'RWS', 'SUS']
         assert self.selection_mode in accepted_values, \
             'selection_mode should be either {}'.format(', '.join(accepted_values))
+
+        # reproduce_from_elite
+        assert not self.reproduce_from_elite or self.selection_mode == 'UNIFORM', \
+            'if reproducing from elite, selection mode must be uniform'
 
         # reproduction_mode
         accepted_values = ['HILL_CLIMBING', 'GENETIC_ALGORITHM']
@@ -289,38 +298,54 @@ class Evolution:
 
         while self.generation <= self.max_generation:
             # evaluate all genotypes on the task
-            self.pop_eval_random_seed = utils.random_int(self.random_state)
+            self.pop_eval_random_seed = utils.random_int(self.random_state)            
+
+            # suffle populations before running evaluation function
+            for pop in self.population:
+                self.random_state.shuffle(pop)
 
             # run evaluation function
             self.performances = self.evaluation_function(
-                self.population, self.pop_eval_random_seed)                        
-            
-            if type(self.performances) != np.ndarray:
-                self.performances = np.array(self.performances)
+                self.population, self.pop_eval_random_seed
+            )
 
-            assert len(self.performances) == self.population_size
+            if type(self.performances) is list:
+                self.performances = np.array(self.performances)
+            
+            if self.num_populations==1 and self.performances.ndim != 2:
+                # eval function returned a simple array of perfomances 
+                # because there is only one population
+                self.performances = np.expand_dims(self.performances,0) # add an additional index (population)
+
+            expected_perf_shape = self.population.shape[:-1]
+            assert self.performances.shape == expected_perf_shape, \
+                "Evaluation function didn't return performances with shape {}".format(expected_perf_shape)
+            
+            assert (self.performances >=0).all(), \
+                "Performance must be non-negative"
 
             self.timing.add_time('EVO1-RUN_eval_function', t)
 
+            # sorting population and performances on performances
             self.sort_population_on_performance()
-
             self.timing.add_time('EVO1-RUN_sort_population', t)
 
             # update average/best/worst population performance
-            avg, best, worst = np.mean(self.performances), self.performances[0], self.performances[-1]
-            variance = np.var(self.performances)
+            avg = np.mean(self.performances, axis=1).tolist()
+            best = self.performances[:,0].tolist()
+            worst = self.performances[:,-1].tolist()
+            variance = np.var(self.performances, axis=1).tolist()
             self.avg_performances.append(avg)
             self.best_performances.append(best)
             self.worst_performances.append(worst)
             self.timing.add_time('EVO1-RUN_stats', t)
 
-            # Compute fitnesses (based on performances)
-            self.update_fitnesses()
-            self.timing.add_time('EVO1-RUN_update_fitness', t)
+            print_stats = lambda a : '|'.join(['{:.5f}'.format(x) for x in a])
 
             # print short statistics
-            print("Generation {}: Best: {:.5f}, Worst: {:.5f}, Average: {:.5f}, Variance: {:.5f}".format(
-                str(self.generation).rjust(self.file_num_zfill), best, worst, avg, variance))
+            print("Generation {}: Best: {}, Worst: {}, Average: {}, Variance: {}".format(
+                str(self.generation).rjust(self.file_num_zfill), print_stats(best), 
+                print_stats(worst), print_stats(avg), print_stats(variance)))
             self.timing.add_time('EVO1-RUN_print_stats', t)
 
             # check if to terminate
@@ -336,15 +361,19 @@ class Evolution:
                 self.save_to_file()
             self.timing.add_time('EVO1-RUN_savefile', t)
 
-            # run reproduce
-            self.reproduce()
+            # Compute fitnesses (based on performances) - used in reproduce
+            self.update_fitnesses()
+            self.timing.add_time('EVO1-RUN_update_fitness', t)
+
+            # run reproduce (update fitnesses and run genetic or hill-climbing)
+            self.reproduce()             
             self.timing.add_time('EVO1-RUN_reproduce', t)
 
             # update generation
             self.generation += 1
 
-    def sort_population_on_performance(self):
-        
+    def sort_population_on_performance(self):     
+        # performances must be non-negative (>=0)           
         if type(self.performance_objective) is str:
             if self.performance_objective == 'MAX':            
                 performances_objectified = self.performances
@@ -359,11 +388,11 @@ class Evolution:
             performances_objectified = - np.abs(self.performances - self.performance_objective)
 
         # sort genotypes, performances by performance_objectified from hight to low
-        self.population_sorted_indexes = np.argsort(-performances_objectified)            
-        self.performances = np.take_along_axis(self.performances, self.population_sorted_indexes, axis=None)
-        population_sorted_indexes_reshp = self.population_sorted_indexes.reshape(-1, 1) # convert in column vector
+        self.population_sorted_indexes = np.argsort(-performances_objectified, axis=-1)            
+        self.performances = np.take_along_axis(self.performances, self.population_sorted_indexes, axis=-1)        
         self.population_unsorted = self.population # keep track of the original population to ensure reproducibility
-        self.population = np.take_along_axis(self.population_unsorted, population_sorted_indexes_reshp, axis=0)
+        sorted_indexes_exp = np.expand_dims(self.population_sorted_indexes, -1) # add one dimension at the end to sort population
+        self.population = np.take_along_axis(self.population_unsorted, sorted_indexes_exp, axis=1)
 
         # OLD METHOD WITHOUT NUMPY:
         # sort genotypes and performances by performance from best to worst
@@ -399,53 +428,66 @@ class Evolution:
 
         t = self.timing.init_tictoc()
 
-        new_population = [None] * self.population_size
+        new_population = np.zeros(                
+            [self.num_populations, self.population_size, self.genotype_size]
+        )
 
-        # 1) Elitist selection
-        self.elite_population = self.population[:self.n_elite]
-        new_population[:self.n_elite] = deepcopy(self.elite_population)
+        # 1) Elitist selection        
+        # same elite size in all populations
+        self.elite_population = self.population[:, :self.n_elite] 
+        new_population[:, :self.n_elite] = self.elite_population
         self.timing.add_time('EVO2-GA_1_elitist_selection', t)
 
         # 2) Select mating population from the remaining population        
         mating_pool = self.select_mating_pool()
         self.timing.add_time('EVO2-GA_2_mating_pool', t)
 
-        # 3) Shuffle
-        self.random_state.shuffle(mating_pool)
+        # 3) Shuffle mating pool
+        for pop_mating_pool in mating_pool:            
+            self.random_state.shuffle(pop_mating_pool)
         self.timing.add_time('EVO2-GA_3_shuffle', t)
 
         # 4) Create children with crossover or apply mutation
         mating_finish = self.n_elite + self.n_mating
-        newpop_counter = self.n_elite  # track where we are in the new population
-        mating_counter = 0
+        newpop_counter = None  # track where we are in the new population
         
-        while newpop_counter < mating_finish:
-            not_last = mating_finish - newpop_counter > 1
-            parent1 = mating_pool[mating_counter]
+        for p in range(self.num_populations):            
+            
+            mating_counter = 0
+            newpop_counter = self.n_elite # track where we are in the new population
+            
+            while newpop_counter < mating_finish:
+                not_last = mating_finish - newpop_counter > 1
+                parent1 = mating_pool[p][mating_counter]
 
-            if not_last and self.random_state.random() < self.crossover_probability:
-                parent2 = mating_pool[mating_counter + 1]
-                child1, child2 = self.crossover(parent1, parent2)
-                # if the child is the same as the first parent after crossover, mutate it (as in Beer)
-                if np.array_equal(child1, parent1):
+                if not_last and self.random_state.random() < self.crossover_probability:
+                    parent2 = mating_pool[p][mating_counter + 1]
+                    child1, child2 = self.crossover(parent1, parent2)
+                    # if the child is the same as the first parent after crossover, mutate it (as in Beer)
+                    if np.array_equal(child1, parent1):
+                        child1 = self.mutate(parent1)
+                    new_population[p][newpop_counter] = child1
+                    new_population[p][newpop_counter + 1] = child2
+                    newpop_counter += 2
+                    mating_counter += 2
+                else:
+                    # if no crossover, mutate just one genotype
                     child1 = self.mutate(parent1)
-                new_population[newpop_counter], new_population[newpop_counter + 1] = child1, child2
-                newpop_counter += 2
-                mating_counter += 2
-            else:
-                # if no crossover, mutate just one genotype
-                child1 = self.mutate(parent1)
-                new_population[newpop_counter] = child1
-                newpop_counter += 1
-                mating_counter += 1
+                    new_population[p][newpop_counter] = child1
+                    newpop_counter += 1
+                    mating_counter += 1
+            
         self.timing.add_time('EVO2-GA_4_children', t)
 
         # 5) Fill up with random new genotypes
-        new_population[newpop_counter:] = self.random_state.uniform(0, 1, [self.n_fillup, self.genotype_size])
+        new_population[:, newpop_counter:] = self.random_state.uniform(
+            MIN_SEARCH_VALUE, MAX_SEARCH_VALUE,
+            size=[self.num_populations, self.n_fillup, self.genotype_size]
+        )
         self.timing.add_time('EVO2-GA_5_fillup', t)
 
         # 6) redefined population based on the newly computed population
-        self.population = np.array(new_population)
+        self.population = new_population
         self.timing.add_time('EVO2-GA_6_convert_pop', t)
 
     def reproduce_hill_climbing(self):
@@ -486,43 +528,56 @@ class Evolution:
         Update genotype fitness to relative values, retain sorting from best to worst.
         """        
         if self.fitness_normalization_mode == 'NONE':
-            # use performances as fitnesses
-            self.fitnesses = np.copy(self.performances)
+            # do not use fitness in selection
+            self.fitnesses = None
 
         elif self.fitness_normalization_mode == 'FPS':  # (fitness-proportionate)
-            avg_perf = self.avg_performances[-1]
-            m = utils.linear_scaling(
-                self.worst_performances[-1],
-                self.best_performances[-1],
-                avg_perf,
-                self.max_expected_offspring
-            )
-            scaled_performances = m * (self.performances - avg_perf) + avg_perf
-            total_performance = np.sum(scaled_performances)
-            self.fitnesses = scaled_performances / total_performance
+            self.fitnesses = np.zeros(self.performances.shape) # same shape as performances
+            for p in range(self.num_populations):
+                avg_perf = self.avg_performances[-1][p]
+                m = utils.linear_scaling(
+                    self.worst_performances[-1][p],
+                    self.best_performances[-1][p],
+                    avg_perf,
+                    self.max_expected_offspring
+                )
+                scaled_performances = m * (self.performances[p] - avg_perf) + avg_perf
+                total_performance = np.sum(scaled_performances)
+                self.fitnesses[p] = scaled_performances / total_performance
 
         elif self.fitness_normalization_mode == 'RANK':  # (rank-based)
             # Baker's linear ranking method: f(pos) = 2-SP+2*(SP-1)*(pos-1)/(n-1)
             # the highest ranked individual receives max_exp_offspring (typically 1.1),
             # the lowest receives 2 - max_exp_offspring
             # normalized to sum to 1
-            self.fitnesses = np.array(
-                [(self.max_expected_offspring + (2 - 2 * self.max_expected_offspring) * i /
-                  (self.population_size - 1)) / self.population_size for i in range(self.population_size)])
+            self.fitnesses = np.zeros(self.performances.shape) # same shape as performances
+            for p in range(self.num_populations):
+                self.fitnesses[p] = np.array(
+                    [
+                        (
+                            self.max_expected_offspring + (2 - 2 * self.max_expected_offspring) * i /
+                            (self.population_size - 1)
+                        ) / self.population_size 
+                        for i in range(self.population_size)
+                    ]
+                )
 
         elif self.fitness_normalization_mode == 'SIGMA':  # (sigma-scaling)
             # for every individual 1 + (I(f) - P(avg_f))/2*P(std) is calculated
             # if value is below zero, a small positive constant is given so the individual has some probability
             # of being chosen. The numbers are then normalized
-            avg = np.mean(self.performances).item()
-            std = max(0.0001, np.std(self.performances).item())
-            exp_values = list((1 + ((f - avg) / (2 * std))) for f in self.performances)
-
-            for i, v in enumerate(exp_values):
-                if v <= 0:
-                    exp_values[i] = 1 / self.population_size
-            s = sum(exp_values)
-            self.fitnesses = np.array(list(e / s for e in exp_values))
+            self.fitnesses = np.zeros(self.performances.shape) # same shape as performances
+            for p in range(self.num_populations):
+                pop_perf = self.performances[p]
+                avg = np.mean(pop_perf)
+                std = max(0.0001, np.std(pop_perf))
+                exp_values = list((1 + ((f - avg) / (2 * std))) for f in pop_perf)
+                
+                for i, v in enumerate(exp_values):
+                    if v <= 0:
+                        exp_values[i] = 1 / self.population_size
+                s = sum(exp_values)
+                self.fitnesses[p] = np.array(list(e / s for e in exp_values))
 
     def select_mating_pool(self):
         """
@@ -530,52 +585,74 @@ class Evolution:
         :return: selected parents for reproduction
         """
 
-        mating_pool = []
-
-        source_population = \
-            self.elite_population if self.reproduce_from_elite \
-            else self.population
-
-        assert len(source_population>0), "Error, can't create a mating pool from empty source population"
-
         if self.selection_mode == 'UNIFORM':
             # create mating_pool from source_population uniformally 
             # (from beginning to end and if needed restart from beginning)
-            cycle_source_population = cycle(source_population)
-            mating_pool = [next(cycle_source_population) for _ in range(self.n_mating)]
+
+            source_population = \
+                self.elite_population if self.reproduce_from_elite \
+                else self.population
+
+            num_source_pop = source_population.shape[1] # number of elements in source pop
+
+            assert num_source_pop>0, \
+                "Error, can't create a mating pool from empty source population"
+            
+            cycle_source_pop_indexes = np.resize(       # this return a column vector 
+                np.resize(                              # [0,1,...,n, 0, 1, ..., n]     
+                    np.arange(num_source_pop),          # where n is num_source_pop and the size
+                    [self.n_mating,1]                   # and n_mating the actual size of the list
+                ),                                  
+                [self.num_populations, self.n_mating, 1] # this duplicates the indexes for all populations
+            )                                            # to obtain same 3 dimensions of source_population
+
+            # rotate thtough the source_population(s)            
+            mating_pool = np.take_along_axis(source_population, cycle_source_pop_indexes, 1)
         else:
-            min_fitness = np.min(self.fitnesses)
-            assert min_fitness > - ROUNDING_TOLERANCE, \
+            min_fitness = np.min(self.fitnesses, axis=-1)
+            assert (min_fitness > - ROUNDING_TOLERANCE).all(), \
                 "Found neg fitness: {}".format(min_fitness)
-            if min_fitness < 0:
+            if (self.fitnesses < 0).any():
                 # setting small neg values due to rounding errors to zeros
                 self.fitnesses[self.fitnesses<0] = 0
-            cum_probs = np.cumsum(self.fitnesses)
-            cum_probs_error = abs(cum_probs[-1] - 1.0)
-            assert 0 <= abs(cum_probs_error) < CUM_PROB_TOLERANCE, \
+            cum_probs = np.cumsum(self.fitnesses, axis=-1)
+            cum_probs_error = np.abs(cum_probs[:,-1] - 1.0)
+            assert (cum_probs_error >=0).all() and (cum_probs_error < CUM_PROB_TOLERANCE).all(), \
                 "Too big cum_probs_error: {}".format(cum_probs_error)
+            mating_pool = np.zeros([self.num_populations, self.n_mating, self.genotype_size])
             if self.selection_mode == "RWS":
                 # roulette wheel selection
-                mating_pool_indexes = self.random_state.choice(
-                    self.population_size, size=self.n_mating, replace=True, p=self.fitnesses)
-                mating_pool = [source_population[i] for i in mating_pool_indexes]
+                for pop in range(self.num_populations):                    
+                    mating_pool_indexes = self.random_state.choice(
+                        self.population_size, 
+                        size=(self.n_mating,1), 
+                        replace=True, 
+                        p=self.fitnesses[pop]
+                    )
+                    mating_pool[pop] = np.take_along_axis(
+                        self.population[pop],
+                        mating_pool_indexes,
+                        axis=0
+                    )
             elif self.selection_mode == "SUS":
                 # TODO: find a way to implement this via numpy
-                # stochastic universal sampling selection
+                # stochastic universal sampling selection                
                 p_dist = 1 / self.n_mating  # distance between the pointers
-                start = self.random_state.uniform(0, p_dist)
-                pointers = [start + i * p_dist for i in range(self.n_mating)]
-
-                for p in pointers:
-                    for (i, genotype) in enumerate(source_population):
-                        if p <= cum_probs[i]:
-                            mating_pool.append(genotype)
-                            break
+                for pop in range(self.num_populations):                    
+                    start = self.random_state.uniform(0, p_dist)
+                    pointers = [start + i * p_dist for i in range(self.n_mating)]
+                    cp = cum_probs[pop] # cumulative prob of current population
+                    m_idx = 0 # index in the mating pool to be filled
+                    for poi in pointers:
+                        for (i, genotype) in enumerate(self.population[pop]):
+                            if poi <= cp[i]:
+                                mating_pool[pop][m_idx] = genotype
+                                m_idx += 1
+                                break
             else:
                 assert False
 
-        mating_pool = deepcopy(mating_pool)
-        assert len(mating_pool) == self.n_mating
+        assert len(mating_pool[0]) == self.n_mating
         return mating_pool
 
     def crossover(self, parent1, parent2):
@@ -662,7 +739,7 @@ class Evolution:
         with open(file_path) as f_in:
             obj_dict = json.load(f_in)
 
-        for k in ['population', 'performances', 'fitnesses']:
+        for k in ['population', 'population_unsorted', 'performances', 'fitnesses']:
             # assert type(obj_dict[k]) == np.ndarray
             obj_dict[k] = np.array(obj_dict[k])
 

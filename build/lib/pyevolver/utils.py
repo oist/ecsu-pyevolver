@@ -54,7 +54,9 @@ def make_rand_vector(dims, random_state):
 
 
 def linear_scaling(min_value, max_value, avg_value, multiplier):
-    # Compute the coefficients for linear fitness scaling, see Goldberg, pp. 76-79
+    # Compute the coefficients for linear fitness scaling, 
+    # see Goldberg, pp. 76-79
+    # see https://www.cse.unr.edu/~sushil/class/gas/notes/scaling/index.html
     if min_value > (multiplier * avg_value - max_value) / (multiplier - 1):
         delta = max_value - avg_value
         if delta > 0:
