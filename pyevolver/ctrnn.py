@@ -94,6 +94,13 @@ class BrainCTRNN:
             (self.num_neurons, self.num_neurons)
         )
 
+    def compute_derivatives(self):
+        self.dy_dt = self.step_size * \
+            np.multiply(
+                1 / self.taus,
+                - self.states + np.dot(self.output, self.weights) + self.input
+            )
+
     def euler_step(self):
         # Compute the next state of the network given its current state and the simple euler equation
         # update the state of all neurons
@@ -102,12 +109,8 @@ class BrainCTRNN:
         # weights shape is (n, n): [[W11,W12,...,W1n],[W21,W22,...,W2n],...,[Wn1,Wn2,...,Wnn]]
         # np.dot(outputs, weights) returns a vector of shape (n,): (n,)·(n,n) = (n,)
         # [O1·W11 + O2·W21 + ... + On·Wn1, O1·W12 + O2·W22 + ... + On·Wn2, ..., O1·W1n + O2·W2n + ... + On·Wnn]
-        self.dy_dt = \
-            self.step_size * \
-            np.multiply(
-                1 / self.taus,
-                - self.states + np.dot(self.output, self.weights) + self.input
-            )
+        self.compute_derivatives()
+            
         self.states += self.dy_dt
         # update the outputs of all neurons
         self.compute_output()
