@@ -31,6 +31,7 @@ class Evolution:
     """
     Class that executes genetic search.
     :param num_populations: (int) number of populations (default 1)
+    :param shuffle_agents: (bool) weather to shuffle agents before eval function
     :param population_size: (int) size of the population
     :param genotype_size: (int) size of the genotype vector
     :param evaluation_function: (func) function to evaluate genotype performance.
@@ -72,6 +73,7 @@ class Evolution:
     genotype_size: int
     evaluation_function: Callable
     num_populations: int = 1
+    shuffle_agents: bool = True
     performance_objective: Union[str,float] = 'MAX' # 'MIN', 'ABS_MAX', float value
     fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
     selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
@@ -301,8 +303,9 @@ class Evolution:
             self.pop_eval_random_seed = utils.random_int(self.random_state)            
 
             # suffle populations before running evaluation function
-            for pop in self.population:
-                self.random_state.shuffle(pop)
+            if self.shuffle_agents:
+                for pop in self.population:
+                    self.random_state.shuffle(pop)
 
             # run evaluation function
             self.performances = self.evaluation_function(

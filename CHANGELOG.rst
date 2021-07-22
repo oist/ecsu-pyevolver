@@ -42,3 +42,7 @@ Version 0.4.1
 =============
 - fix linear_scaling: error occured when all agents have same performance
 - changes in requirments.txt (after pip install wheel)
+
+Version 0.4.2
+=============
+- shuffle_agents param
