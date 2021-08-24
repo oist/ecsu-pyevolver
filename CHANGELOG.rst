@@ -46,3 +46,7 @@ Version 0.4.1
 Version 0.4.2
 =============
 - shuffle_agents param
+
+Version 0.4.3
+=============
+- handle case were all performances are 0
