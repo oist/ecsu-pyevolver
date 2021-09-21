@@ -1,18 +1,22 @@
 Metadata-Version: 2.1
 Name: pyevolver
-Version: 0.4.0
+Version: 0.4.3
 Summary: Package for evolving neural networks with Python.
 Home-page: https://gitlab.com/oist-ecsu/pyevolver
 Author: Federico Sangati, Katja Sangati
 Author-email: federico.sangati2@oist.jp, ekaterina.sangati@oist.jp
 License: UNKNOWN
-Description: # pyevolver
-        
-        Install with 
-        
-        `pip install git+https://gitlab.com/oist-ecsu/pyevolver`
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3.7.3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+License-File: AUTHORS.rst
+
+# pyevolver
+
+Install with 
+
+`pip install git+https://gitlab.com/oist-ecsu/pyevolver`
+

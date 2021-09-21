@@ -1,3 +1,5 @@
+AUTHORS.rst
+LICENSE.txt
 MANIFEST.in
 README.md
 setup.cfg

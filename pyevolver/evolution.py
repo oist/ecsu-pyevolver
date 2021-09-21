@@ -31,6 +31,7 @@ class Evolution:
     """
     Class that executes genetic search.
     :param num_populations: (int) number of populations (default 1)
+    :param shuffle_agents: (bool) weather to shuffle agents before eval function
     :param population_size: (int) size of the population
     :param genotype_size: (int) size of the genotype vector
     :param evaluation_function: (func) function to evaluate genotype performance.
@@ -72,6 +73,7 @@ class Evolution:
     genotype_size: int
     evaluation_function: Callable
     num_populations: int = 1
+    shuffle_agents: bool = True
     performance_objective: Union[str,float] = 'MAX' # 'MIN', 'ABS_MAX', float value
     fitness_normalization_mode: str = 'FPS' # 'NONE', 'FPS', 'RANK', 'SIGMA'
     selection_mode: str = 'RWS' # 'UNIFORM', 'RWS', 'SUS'
@@ -231,7 +233,7 @@ class Evolution:
                 'In GENETIC_ALGORITHM: 0 <= mating_fraction <=1'
             assert 0 <= self.crossover_probability <= 1, \
                 'In GENETIC_ALGORITHM: 0 <= crossover_probability <=1'
-            assert re.match('UNIFORM|\d+-POINT', self.crossover_mode), \
+            assert re.match(r'UNIFORM|\d+-POINT', self.crossover_mode), \
                 'In GENETIC_ALGORITHM: crossover_mode should be UNIFORM or x-POINT'
 
         # crossover
@@ -301,8 +303,9 @@ class Evolution:
             self.pop_eval_random_seed = utils.random_int(self.random_state)            
 
             # suffle populations before running evaluation function
-            for pop in self.population:
-                self.random_state.shuffle(pop)
+            if self.shuffle_agents:
+                for pop in self.population:
+                    self.random_state.shuffle(pop)
 
             # run evaluation function
             self.performances = self.evaluation_function(
@@ -543,7 +546,11 @@ class Evolution:
                 )
                 scaled_performances = m * (self.performances[p] - avg_perf) + avg_perf
                 total_performance = np.sum(scaled_performances)
-                self.fitnesses[p] = scaled_performances / total_performance
+                if total_performance == 0:
+                    # all performances are 0, make them all equal (not zero)
+                    self.fitnesses[p] = 1. / self.population_size
+                else:
+                    self.fitnesses[p] = scaled_performances / total_performance
 
         elif self.fitness_normalization_mode == 'RANK':  # (rank-based)
             # Baker's linear ranking method: f(pos) = 2-SP+2*(SP-1)*(pos-1)/(n-1)

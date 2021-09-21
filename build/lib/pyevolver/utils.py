@@ -59,13 +59,13 @@ def linear_scaling(min_value, max_value, avg_value, multiplier):
     # see https://www.cse.unr.edu/~sushil/class/gas/notes/scaling/index.html
     if min_value > (multiplier * avg_value - max_value) / (multiplier - 1):
         delta = max_value - avg_value
-        if delta > 0:
+        if delta > 1e-10: # zero with rounding error
             return (multiplier - 1) * avg_value / delta
         else:
             return 0
     else:
         delta = avg_value - min_value
-        if delta > 0:
+        if delta > 1e-10: # zero with rounding error
             return avg_value / delta
         else:
             return 0

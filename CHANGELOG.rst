@@ -37,3 +37,16 @@ Version 0.4.0
 - introduce check on perfromances (non-negative)
 - put fitenss to None if fitness_norm_mode is NONE
 - included population_unsorted in numpy conversion in load_from_file
+
+Version 0.4.1
+=============
+- fix linear_scaling: error occured when all agents have same performance
+- changes in requirments.txt (after pip install wheel)
+
+Version 0.4.2
+=============
+- shuffle_agents param
+
+Version 0.4.3
+=============
+- handle case were all performances are 0
