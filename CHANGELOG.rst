@@ -50,3 +50,8 @@ Version 0.4.2
 Version 0.4.3
 =============
 - handle case were all performances are 0
+
+Version 0.5.0
+=============
+- state phase plots
+- changed requirements in setup

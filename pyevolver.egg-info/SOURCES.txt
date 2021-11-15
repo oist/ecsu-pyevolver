@@ -17,7 +17,6 @@ pyevolver.egg-info/dependency_links.txt
 pyevolver.egg-info/requires.txt
 pyevolver.egg-info/top_level.txt
 pyevolver/tests/__init__.py
-pyevolver/tests/ctrnn_test.py
 pyevolver/tests/evolution_demo.py
 pyevolver/tests/evolution_test.py
 pyevolver/tests/parallel_test.py
