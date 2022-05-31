@@ -101,7 +101,7 @@ class BrainCTRNN:
                 - self.states + np.dot(self.output, self.weights) + self.input
             )
 
-    def euler_step(self):
+    def euler_step(self, comp_out=True):
         # Compute the next state of the network given its current state and the simple euler equation
         # update the state of all neurons
         # let n the number of neurons
@@ -112,8 +112,10 @@ class BrainCTRNN:
         self.compute_derivatives()
             
         self.states += self.dy_dt
-        # update the outputs of all neurons
-        self.compute_output()
+        
+        if comp_out:
+            # update the outputs of all neurons
+            self.compute_output()
 
     def compute_output(self):
         self.output = expit(np.multiply(self.gains, self.states + self.biases))
