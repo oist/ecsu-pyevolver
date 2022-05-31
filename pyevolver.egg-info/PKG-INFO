@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pyevolver
-Version: 0.5.0
+Version: 0.6.0
 Summary: Package for evolving neural networks with Python.
 Home-page: https://gitlab.com/oist-ecsu/pyevolver
 Author: Federico Sangati, Katja Sangati

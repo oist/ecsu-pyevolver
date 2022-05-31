@@ -55,3 +55,8 @@ Version 0.5.0
 =============
 - state phase plots
 - changed requirements in setup
+
+Version 0.6.0
+=============
+- adding optional argument in euler_step for computing output 
+    (defaults to True so no back compatibility changes)
