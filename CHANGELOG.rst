@@ -2,33 +2,32 @@
 Changelog
 =========
 
-Version 0.0.1
+Version 0.7.0
 =============
-- initial build of the package
+- undo last change (optional argument in euler_step for computing output)
 
-Version 0.0.2
+Version 0.6.0
 =============
-- introduced 'NONE' option for 'fitness_normalization_mode' (use performances as fitnesses with no normalization)
-- introduction 'UNIFORM' option for 'selection_mode' - in this case the mating pool is created by choosing genotype elements in sequence (as opposed to sampling).
-- new option 'reproduce_from_elite' - to allow the mating_pool to be made of genotypes from elite population only
+- adding optional argument in euler_step for computing output 
+    (defaults to True so no back compatibility changes)
 
-Version 0.0.3
+Version 0.5.0
 =============
-- introduced param 'performance_objective': 'MAX', 'MIN', 'ABS_MAX', float value
+- state phase plots
+- changed requirements in setup
 
-Version 0.1.0
+Version 0.4.3
 =============
-- updated min max rand int in utils
+- handle case were all performances are 0
 
-Version 0.2.0
+Version 0.4.2
 =============
-- keep track of unsorted population and sorted index for reproducibility
+- shuffle_agents param
 
-Version 0.3.0
+Version 0.4.1
 =============
-- single pop_eval_random_seed (no longer list of seeds)
-- taking into rounding error for prob and cum prob tolerances
-- fixes on checking parameters
+- fix linear_scaling: error occured when all agents have same performance
+- changes in requirments.txt (after pip install wheel)
 
 Version 0.4.0
 =============
@@ -38,25 +37,30 @@ Version 0.4.0
 - put fitenss to None if fitness_norm_mode is NONE
 - included population_unsorted in numpy conversion in load_from_file
 
-Version 0.4.1
+Version 0.3.0
 =============
-- fix linear_scaling: error occured when all agents have same performance
-- changes in requirments.txt (after pip install wheel)
+- single pop_eval_random_seed (no longer list of seeds)
+- taking into rounding error for prob and cum prob tolerances
+- fixes on checking parameters
 
-Version 0.4.2
+Version 0.2.0
 =============
-- shuffle_agents param
+- keep track of unsorted population and sorted index for reproducibility
 
-Version 0.4.3
+Version 0.1.0
 =============
-- handle case were all performances are 0
+- updated min max rand int in utils
 
-Version 0.5.0
+Version 0.0.3
 =============
-- state phase plots
-- changed requirements in setup
+- introduced param 'performance_objective': 'MAX', 'MIN', 'ABS_MAX', float value
 
-Version 0.6.0
+Version 0.0.2
 =============
-- adding optional argument in euler_step for computing output 
-    (defaults to True so no back compatibility changes)
+- introduced 'NONE' option for 'fitness_normalization_mode' (use performances as fitnesses with no normalization)
+- introduction 'UNIFORM' option for 'selection_mode' - in this case the mating pool is created by choosing genotype elements in sequence (as opposed to sampling).
+- new option 'reproduce_from_elite' - to allow the mating_pool to be made of genotypes from elite population only
+
+Version 0.0.1
+=============
+- initial build of the package
