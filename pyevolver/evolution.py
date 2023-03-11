@@ -187,8 +187,8 @@ class Evolution:
     def validate_params(self):
 
         # termination condition
-        assert self.max_generation is None or self.termination_function is None, \
-            "Either max_generation or termination_function must be defined"
+        # assert self.max_generation is None or self.termination_function is None, \
+        #     "Either max_generation or termination_function must be defined"
 
         # folder path
         if self.folder_path:
