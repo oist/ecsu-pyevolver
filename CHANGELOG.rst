@@ -4,6 +4,10 @@ Changelog
 
 Version 0.7.0
 =============
+- allow both term function and max generaion
+
+Version 0.7.0
+=============
 - undo last change (optional argument in euler_step for computing output)
 
 Version 0.6.0
